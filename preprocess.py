@@ -55,5 +55,6 @@ if __name__ == '__main__':
 	params2['filter_chunks_num'] = 5
 
 	for i in vultype:
+		print('\n \n start vulnerability: %s' % i)
 		params2['commits_path'] = os.path.join(commits_path, i)
 		Preprocess().generate_functions_from_commits(params2)
