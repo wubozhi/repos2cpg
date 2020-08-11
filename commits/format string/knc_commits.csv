@@ -1,0 +1,105 @@
+message,commit_id,parent_commit,date,committer,diff
+"test/unit.c: Fix printf(3) format strings.
+",09affd18d1661f1700427a15d1a8c58f002ddfd7,85d0498d000b0c135ffa116268e27d5049c38ff3,2014-05-14 09:19:02-04:00,Roland C. Dowdeswell,"diff --git a/test/unit.c b/test/unit.c
+index 4c31235..0dc4282 100644
+--- a/test/unit.c
++++ b/test/unit.c
+@@ -158,7 +158,7 @@ knc_loop(knc_ctx ctx, int server)
+ 		nfds_t		nfds;
+ 
+ 		fprintf(stderr, ""%s: loop start (% 6d), ""
+-		    ""R=% 9d %s S=% 9d %s ToSend=% 9d\n"", server?""S"":""C"",
++		    ""R=% 9d %s S=% 9d %s ToSend=% 9zu\n"", server?""S"":""C"",
+ 		    ++loopcount, valrecv, do_recv?""    "":""done"", valsend,
+ 		    do_send?""    "":""done"", knc_pending(ctx, KNC_DIR_SEND));
+ 
+@@ -225,7 +225,7 @@ knc_loop(knc_ctx ctx, int server)
+ 	}
+ 
+ 	fprintf(stderr, ""%s: loop done  (% 6d), ""
+-	    ""R=% 9d %s S=% 9d %s ToSend=% 9d\n"", server?""S"":""C"",
++	    ""R=% 9d %s S=% 9d %s ToSend=% 9zu\n"", server?""S"":""C"",
+ 	    ++loopcount, valrecv, do_recv?""    "":""done"", valsend,
+ 	    do_send?""    "":""done"", knc_pending(ctx, KNC_DIR_SEND));
+ "
+"libknc: improve errors connecting to hosts.
+
+We modify knc_generic_error() (used internally, only) to take a
+sprintf-style format string and arguments and use same to provide
+more informative errors for name lookup issues.
+",2602eff7976ab1e2dfe0b1bc8c8e5d177d72610e,1c3b0e2cb6689e1876f94893394f362be4773eb8,2014-08-06 09:36:38-04:00,Roland C. Dowdeswell,"diff --git a/lib/libknc.c b/lib/libknc.c
+index 38738be..1fcbbe6 100644
+--- a/lib/libknc.c
++++ b/lib/libknc.c
+@@ -1871,8 +1871,8 @@ connect_host(knc_ctx ctx, const char *domain, const char *service, int flags)
+ 	ai.ai_socktype = SOCK_STREAM;
+ 	ret = getaddrinfo(domain, service, &ai, &res0);
+ 	if (ret) {
+-		KNCDEBUG(ctx, (""getaddrinfo: (%s,%s) %s"", domain, service,
+-		    gai_strerror(ret)));
++		knc_generic_error(ctx, ""getaddrinfo: (%s,%s) %s"", domain,
++		    service, gai_strerror(ret));
+ 		return -1;
+ 	}
+ 
+@@ -1891,6 +1891,9 @@ connect_host(knc_ctx ctx, const char *domain, const char *service, int flags)
+ 		KNCDEBUG(ctx, (""connect: %s"", strerror(errno)));
+ 	}
+ 
++	if (s == -1)
++		knc_syscall_error(ctx, ""connect_host, connect"", errno);
++
+ 	freeaddrinfo(res0);
+ 	return s;
+ }
+@@ -2259,10 +2262,8 @@ knc_connect(knc_ctx ctx, const char *hostservice,
+ 	knc_import_set_hb_service(ctx, host, service);
+ 
+ 	fd = connect_host(ctx, host, port, opts);
+-	if (fd == -1) {
+-		knc_syscall_error(ctx, ""connect_host"", errno);
++	if (fd == -1)
+ 		goto out;
+-	}
+ 
+ 	knc_set_net_fd(ctx, fd);
+ 	((struct fd_cookie *)ctx->netcookie)->mine = 1;
+@@ -2580,13 +2581,22 @@ knc_errstring(OM_uint32 maj_stat, OM_uint32 min_stat, const char *preamble)
+ 	return str;
+ }
+ 
++#define GENERIC_BUFSIZ	1024
++
+ void
+-knc_generic_error(knc_ctx ctx, const char *str)
++knc_generic_error(knc_ctx ctx, const char *fmt, ...)
+ {
++	va_list ap;
+ 
+-	/* XXXrcd: wrong type */
+ 	ctx->error  = KNC_ERROR_GENERIC;
+-	ctx->errstr = strdup(str);
++	ctx->errstr = malloc(GENERIC_BUFSIZ);
++
++	if (!ctx->errstr)
++		return;
++
++	va_start(ap, fmt);
++	vsnprintf(ctx->errstr, GENERIC_BUFSIZ, fmt, ap);
++	va_end(ap);
+ }
+ 
+ void
+diff --git a/lib/private.h b/lib/private.h
+index f144b94..c5b1383 100644
+--- a/lib/private.h
++++ b/lib/private.h
+@@ -5,6 +5,7 @@
+ void	run_loop(knc_ctx);
+ 
+ void	knc_enomem(knc_ctx);
+-void	knc_generic_error(knc_ctx, const char *);
++void	knc_generic_error(knc_ctx, const char *, ...)
++	    __attribute__((__format__(__printf__, 2, 3)));
+ void	knc_syscall_error(knc_ctx, const char *, int);
+ void	knc_gss_error(knc_ctx, OM_uint32, OM_uint32, const char *);"

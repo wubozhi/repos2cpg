@@ -1,0 +1,333 @@
+message,commit_id,parent_commit,date,committer,diff
+"When compiling format strings, nmh attempts to avoid multiple parsing
+of address and date fields by only inserting calls to the parse
+functions (FT_PARSEADDR and FT_PARSEDATE) for a given component once.
+The problem with this method is that the initial invocation may
+actually be on a code path that is conditionally executed.  This can
+result cached copies of data from the fields in previous messages to
+be used.
+
+My solution is to move this optimization from compile time to run time.
+Address and Date parsing calls (FT_PARSEADDR and FT_PARSEDATE) will
+always be included.  Run time flags are used to prevent these functions
+from being run more than once per component per message.
+
+The c_flags field has being converted from a boolean to a bit-field to
+facilitate maintenance of the new CT_PARSED value.  The result value
+that used to be in this field is now the bit CF_TRUE and the
+overloaded use of this field by scan() is now the CT_DATEFAB bit.
+
+Some unneeded flags (CT_ADDRPARSE, CT_MYMBOX) have also been removed.
+",cafee7a804b8aa53166065e988ec0fc387862fc8,f8665df65d2bc3552b68c734a7b3975d95ccdc41,2003-08-11 01:20:52+00:00,Jeffrey C Honig,"diff --git a/ChangeLog b/ChangeLog
+index b0a7242b..2ba6be3b 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -1,3 +1,12 @@
++2003-08-10  Jeffrey C Honig  <jch@honig.net>
++
++	* Fix problem where parsing of address/date fields in fmt_compile
++	is optimized to the first instance.  The first instance may be in
++	contitional code which will result in cached data to
++	be used.  Instead, convert c_flags to a flags field from a boolean
++	and parse on the first use.
++	* Remove some unused flag bits.
++
+ Fri Jul 01 22:02:00 2003 Glenn Burkhardt <glenn@aoi-industries.com>
+ 
+ 	* Applied fixes for configuration problems with Solaris and
+diff --git a/h/fmt_scan.h b/h/fmt_scan.h
+index fd4c555d..cece50e0 100644
+--- a/h/fmt_scan.h
++++ b/h/fmt_scan.h
+@@ -34,8 +34,13 @@ struct comp {
+  */
+ #define	CT_ADDR       (1<<0)	/* referenced as address    */
+ #define	CT_DATE       (1<<1)	/* referenced as date       */
+-#define	CT_MYMBOX     (1<<2)	/* ""mymbox"" test being done */
+-#define	CT_ADDRPARSE  (1<<3)	/* address parse being done */
++
++/*
++ * c_flags bits
++ */
++#define	CF_TRUE       (1<<0)	/* usually means component is present */
++#define	CF_PARSED     (1<<1)	/* address/date has been parsed */
++#define	CF_DATEFAB    (1<<2)	/* datefield fabricated */
+ 
+ extern int fmt_norm;
+ 
+diff --git a/sbr/fmt_compile.c b/sbr/fmt_compile.c
+index 4c64b9c6..a478acb7 100644
+--- a/sbr/fmt_compile.c
++++ b/sbr/fmt_compile.c
+@@ -423,13 +423,11 @@ do_name(char *sp, int preprocess)
+ 	if (cm->c_type & CT_ADDR) {
+ 	    CERROR(""component used as both date and address"");
+ 	}
+-	if (! (cm->c_type & CT_DATE)) {
+-	    cm->c_tws = (struct tws *)
+-				calloc((size_t) 1, sizeof(*cm->c_tws));
+-	    fp->f_type = preprocess;
+-	    PUTCOMP(sp);
+-	    cm->c_type |= CT_DATE;
+-	}
++	cm->c_tws = (struct tws *)
++	    calloc((size_t) 1, sizeof(*cm->c_tws));
++	fp->f_type = preprocess;
++	PUTCOMP(sp);
++	cm->c_type |= CT_DATE;
+ 	break;
+ 
+     case FT_MYMBOX:
+@@ -437,18 +435,15 @@ do_name(char *sp, int preprocess)
+ 	    ismymbox ((struct mailname *) 0);
+ 	    primed++;
+ 	}
+-	cm->c_type |= CT_MYMBOX;
+ 	/* fall through */
+     case FT_PARSEADDR:
+ 	if (cm->c_type & CT_DATE) {
+ 	    CERROR(""component used as both date and address"");
+ 	}
+-	if (! (cm->c_type & CT_ADDRPARSE)) {
+-	    cm->c_mn = &fmt_mnull;
+-	    fp->f_type = preprocess;
+-	    PUTCOMP(sp);
+-	    cm->c_type |= (CT_ADDR | CT_ADDRPARSE);
+-	}
++	cm->c_mn = &fmt_mnull;
++	fp->f_type = preprocess;
++	PUTCOMP(sp);
++	cm->c_type |= CT_ADDR;
+ 	break;
+ 
+     case FT_FORMATADDR:
+diff --git a/sbr/fmt_scan.c b/sbr/fmt_scan.c
+index 5dc7f22c..0a2397ba 100644
+--- a/sbr/fmt_scan.c
++++ b/sbr/fmt_scan.c
+@@ -296,6 +296,15 @@ fmt_scan (struct format *format, char *scanl, int width, int *dat)
+ 
+     cp = scanl;
+     ep = scanl + width - 1;
++
++    for (fmt = format; fmt->f_type != FT_DONE; fmt++)
++	switch (fmt->f_type) {
++	case FT_PARSEADDR:
++	case FT_PARSEDATE:
++	    fmt->f_comp->c_flags &= ~CF_PARSED;
++	    break;
++	}
++
+     fmt = format;
+ 
+     while (cp < ep) {
+@@ -490,7 +499,7 @@ fmt_scan (struct format *format, char *scanl, int width, int *dat)
+ 	    break;
+ 
+ 	case FT_LV_COMPFLAG:
+-	    value = fmt->f_comp->c_flags;
++	    value = (fmt->f_comp->c_flags & CF_TRUE) != 0;
+ 	    break;
+ 	case FT_LV_COMP:
+ 	    value = (comp = fmt->f_comp)->c_text ? atoi(comp->c_text) : 0;
+@@ -710,13 +719,16 @@ fmt_scan (struct format *format, char *scanl, int width, int *dat)
+ 
+ 	case FT_PARSEDATE:
+ 	    comp = fmt->f_comp;
++	    if (comp->c_flags & CF_PARSED)
++		break;
+ 	    if ((sp = comp->c_text) && (tws = dparsetime(sp))) {
+ 		*comp->c_tws = *tws;
+-		comp->c_flags = 0;
+-	    } else if (comp->c_flags >= 0) {
++		comp->c_flags &= ~CF_TRUE;
++	    } else if ((comp->c_flags & CF_DATEFAB) == 0) {
+ 		memset ((char *) comp->c_tws, 0, sizeof *comp->c_tws);
+-		comp->c_flags = 1;
++		comp->c_flags = CF_TRUE;
+ 	    }
++	    comp->c_flags |= CF_PARSED;
+ 	    break;
+ 
+ 	case FT_FORMATADDR:
+@@ -779,6 +791,8 @@ fmt_scan (struct format *format, char *scanl, int width, int *dat)
+ 
+ 	case FT_PARSEADDR:
+ 	    comp = fmt->f_comp;
++	    if (comp->c_flags & CF_PARSED)
++		break;
+ 	    if (comp->c_mn != &fmt_mnull)
+ 		mnfree (comp->c_mn);
+ 	    if ((sp = comp->c_text) && (sp = getname(sp)) &&
+@@ -786,6 +800,7 @@ fmt_scan (struct format *format, char *scanl, int width, int *dat)
+ 		comp->c_mn = mn;
+ 		while (getname(""""))
+ 		    ;
++		comp->c_flags |= CF_PARSED;
+ 	    } else {
+ 		while (getname(""""))		/* XXX */
+ 		    ;
+@@ -805,15 +820,22 @@ fmt_scan (struct format *format, char *scanl, int width, int *dat)
+ 	    if ((sp = comp->c_text) && (sp = getname(sp)) &&
+ 		(mn = getm (sp, NULL, 0, AD_NAME, NULL))) {
+ 		comp->c_mn = mn;
+-		comp->c_flags = ismymbox(mn);
++		if (ismymbox(mn))
++		    comp->c_flags |= CF_TRUE;
++		else
++		    comp->c_flags &= ~CF_TRUE;
+ 		while ((sp = getname(sp)))
+-		    if (comp->c_flags == 0 &&
++		    if ((comp->c_flags & CF_TRUE) == 0 &&
+ 			(mn = getm (sp, NULL, 0, AD_NAME, NULL)))
+-			comp->c_flags |= ismymbox(mn);
++			if (ismymbox(mn))
++			    comp->c_flags |= CF_TRUE;
+ 	    } else {
+ 		while (getname(""""))		/* XXX */
+ 		    ;
+-		comp->c_flags = (comp->c_text == 0);
++		if (comp->c_text == 0)
++		    comp->c_flags |= CF_TRUE;
++		else
++		    comp->c_flags &= ~CF_TRUE;
+ 		comp->c_mn = &fmt_mnull;
+ 	    }
+ 	    break;
+diff --git a/uip/fmtdump.c b/uip/fmtdump.c
+index cc0bc704..cc9a589a 100644
+--- a/uip/fmtdump.c
++++ b/uip/fmtdump.c
+@@ -39,6 +39,7 @@ static int findlabel(struct format *);
+ static void assignlabel(struct format *);
+ static char *f_typestr(int);
+ static char *c_typestr(int);
++static char *c_flagsstr(int);
+ static void litputs(char *);
+ static void litputc(char);
+ 
+@@ -163,7 +164,7 @@ dumpone(struct format *fmt)
+ 		if (fmt->f_comp->c_type)
+ 			printf("", c_type %s"", c_typestr(fmt->f_comp->c_type));
+ 		if (fmt->f_comp->c_flags)
+-			printf("", c_flags %d"", fmt->f_comp->c_flags);
++			printf("", c_flags %s"", c_flagsstr(fmt->f_comp->c_flags));
+ 		break;
+ 
+ 	case FT_LV_SEC:
+@@ -195,7 +196,7 @@ dumpone(struct format *fmt)
+ 		if (fmt->f_comp->c_type)
+ 			printf("", c_type %s"", c_typestr(fmt->f_comp->c_type));
+ 		if (fmt->f_comp->c_flags)
+-			printf("", c_flags %d"", fmt->f_comp->c_flags);
++			printf("", c_flags %s"", c_flagsstr(fmt->f_comp->c_flags));
+ 		break;
+ 
+ 	case FT_LS_ADDR:
+@@ -217,7 +218,7 @@ dumpone(struct format *fmt)
+ 		if (fmt->f_comp->c_type)
+ 			printf("", c_type %s"", c_typestr(fmt->f_comp->c_type));
+ 		if (fmt->f_comp->c_flags)
+-			printf("", c_flags %d"", fmt->f_comp->c_flags);
++			printf("", c_flags %s"", c_flagsstr(fmt->f_comp->c_flags));
+ 		break;
+ 
+ 	case FT_COMPF:
+@@ -228,7 +229,7 @@ dumpone(struct format *fmt)
+ 		if (fmt->f_comp->c_type)
+ 			printf("", c_type %s"", c_typestr(fmt->f_comp->c_type));
+ 		if (fmt->f_comp->c_flags)
+-			printf("", c_flags %d"", fmt->f_comp->c_flags);
++			printf("", c_flags %s"", c_flagsstr(fmt->f_comp->c_flags));
+ 		break;
+ 
+ 	case FT_STRF:
+@@ -452,19 +453,35 @@ c_typestr(int t)
+ 	static char buf[64];
+ 
+ 	buf[0] = '\0';
+-	if (t & ~(CT_ADDR|CT_DATE|CT_MYMBOX|CT_ADDRPARSE))
++	if (t & ~(CT_ADDR|CT_DATE))
+ 		printf(buf, ""0x%x "", t);
+ 	strcat(buf, ""<"");
+ 	i = 0;
+ 	FNORD(CT_ADDR, ""ADDR"");
+ 	FNORD(CT_DATE, ""DATE"");
+-	FNORD(CT_MYMBOX, ""MYMBOX"");
+-	FNORD(CT_ADDRPARSE, ""ADDRPARSE"");
+ 	strcat(buf, "">"");
+ 	return(buf);
+-#undef FNORD
+ }
+ 
++static char *
++c_flagsstr(int t)
++{
++	register int i;
++	static char buf[64];
++
++	buf[0] = '\0';
++	if (t & ~(CF_TRUE|CF_PARSED|CF_DATEFAB))
++		printf(buf, ""0x%x "", t);
++	strcat(buf, ""<"");
++	i = 0;
++	FNORD(CF_TRUE, ""TRUE"");
++	FNORD(CF_PARSED, ""PARSED"");
++	FNORD(CF_DATEFAB, ""DATEFAB"");
++	strcat(buf, "">"");
++	return(buf);
++}
++#undef FNORD
++
+ static void
+ litputs(char *s)
+ {
+diff --git a/uip/scansbr.c b/uip/scansbr.c
+index c04e8c70..be68bf89 100644
+--- a/uip/scansbr.c
++++ b/uip/scansbr.c
+@@ -331,9 +331,9 @@ finished:
+ 		if (datecomp->c_tws == NULL)
+ 		    adios (NULL, ""unable to allocate tws buffer"");
+ 		*datecomp->c_tws = *dlocaltime ((time_t *) &st.st_mtime);
+-		datecomp->c_flags = -1;
++		datecomp->c_flags |= CF_DATEFAB|CF_TRUE;
+ 	    } else {
+-		datecomp->c_flags = 0;
++		datecomp->c_flags &= ~CF_DATEFAB;
+ 	    }
+ 	}
+     }"
+"Fixed bug in which the static maildir was overwritted if a format string
+was read from the profile.
+",745645022b8e7ff0c21cba33776bc890986b3361,e19a05bad44e548ad6f6d1865b5f797d5d70417c,2004-10-12 20:38:10+00:00,Jon Steinhart,"diff --git a/uip/inc.c b/uip/inc.c
+index af8180d1..02a2cbff 100644
+--- a/uip/inc.c
++++ b/uip/inc.c
+@@ -244,6 +244,7 @@ main (int argc, char **argv)
+     struct stat st, s1;
+     FILE *aud = NULL;
+     char	b[MAXPATHLEN + 1];
++    char	*maildir_copy;		/* copy of mail directory because the static gets overwritten */
+ 
+ #ifdef POP
+     int nmsgs, nbytes, p = 0;
+@@ -547,6 +548,9 @@ main (int argc, char **argv)
+ 	folder = getfolder (0);
+     maildir = m_maildir (folder);
+ 
++    if ((maildir_copy = strdup(maildir)) == (char *)0)
++        adios (maildir, ""error allocating memory to copy maildir"");
++
+     if (stat (maildir, &st) == NOTOK) {
+ 	if (errno != ENOENT)
+ 	    adios (maildir, ""error on folder"");
+@@ -828,7 +832,7 @@ go_to_it:
+ 		 *  Run the external program hook on the message.
+ 		 */
+ 
+-		(void)snprintf(b, sizeof (b), ""%s/%d"", maildir, msgnum + 1);
++		(void)snprintf(b, sizeof (b), ""%s/%d"", maildir_copy, msgnum + 1);
+ 		(void)ext_hook(""add-hook"", b, (char *)0);
+ 
+ 		if (aud)"

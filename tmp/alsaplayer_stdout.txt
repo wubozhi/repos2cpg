@@ -1,0 +1,39 @@
+http_desc_t_	tmp/http.c	41;"	s	line:41	file:	end:56
+host	tmp/http.c	42;"	m	line:42	struct:http_desc_t_	file:
+path	tmp/http.c	42;"	m	line:42	struct:http_desc_t_	file:
+port	tmp/http.c	43;"	m	line:43	struct:http_desc_t_	file:
+sock	tmp/http.c	44;"	m	line:44	struct:http_desc_t_	file:
+size	tmp/http.c	45;"	m	line:45	struct:http_desc_t_	file:
+pos	tmp/http.c	45;"	m	line:45	struct:http_desc_t_	file:
+buffer	tmp/http.c	46;"	m	line:46	struct:http_desc_t_	file:
+begin	tmp/http.c	47;"	m	line:47	struct:http_desc_t_	file:
+len	tmp/http.c	48;"	m	line:48	struct:http_desc_t_	file:
+direction	tmp/http.c	49;"	m	line:49	struct:http_desc_t_	file:
+going	tmp/http.c	50;"	m	line:50	struct:http_desc_t_	file:
+thread	tmp/http.c	51;"	m	line:51	struct:http_desc_t_	file:
+buffer_lock	tmp/http.c	52;"	m	line:52	struct:http_desc_t_	file:
+read_condition	tmp/http.c	53;"	m	line:53	struct:http_desc_t_	file:
+error	tmp/http.c	54;"	m	line:54	struct:http_desc_t_	file:
+fastmode	tmp/http.c	55;"	m	line:55	struct:http_desc_t_	file:
+http_desc_t	tmp/http.c	56;"	t	line:56	file:
+HTTP_BLOCK_SIZE	tmp/http.c	59;"	d	line:59	file:	end:59
+DEFAULT_HTTP_BUFFER_SIZE	tmp/http.c	62;"	d	line:62	file:	end:62
+http_buffer_size	tmp/http.c	63;"	v	line:63
+parse_uri	tmp/http.c	70;"	f	line:70	file:	end:117
+sleep_for_data	tmp/http.c	121;"	f	line:121	file:	end:137
+get_response_head	tmp/http.c	141;"	f	line:141	file:	end:166
+read_data	tmp/http.c	171;"	f	line:171	file:	end:184
+buffer_thread	tmp/http.c	189;"	f	line:189	file:	end:266
+reconnect	tmp/http.c	270;"	f	line:270	file:	end:387
+http_close	tmp/http.c	394;"	f	line:394	file:	end:413
+http_open	tmp/http.c	417;"	f	line:417	file:	end:444
+http_can_handle	tmp/http.c	448;"	f	line:448	file:	end:454
+http_init	tmp/http.c	458;"	f	line:458	file:	end:463
+http_shutdown	tmp/http.c	467;"	f	line:467	file:	end:471
+http_read	tmp/http.c	475;"	f	line:475	file:	end:561
+http_seek	tmp/http.c	566;"	f	line:566	file:	end:580
+http_tell	tmp/http.c	585;"	f	line:585	file:	end:590
+http_can_expand	tmp/http.c	594;"	f	line:594	file:	end:597
+http_expand	tmp/http.c	601;"	f	line:601	file:	end:604
+http_plugin	tmp/http.c	608;"	v	line:608
+reader_plugin_info	tmp/http.c	627;"	f	line:627	end:630

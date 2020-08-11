@@ -1,0 +1,1440 @@
+message,commit_id,parent_commit,date,committer,diff
+"* Bug #15213, #18635: The use of the insecure m_scratch() and
+  m_tmpfil() functions have been replaced by m_mktemp()
+  or m_mktemp2() functions (defined in sbr/m_mktemp.c).
+  The new functions use mkstemp() to securely create
+  temporary files to avoid the numerous race conditions
+  that exist with the old functions.  This does assume
+  that mkstemp() is available.  Unsure if we need to
+  create an alternative implementation if mkstemp() is
+  not available.  More information about new temp file
+  functions in m_mktemp.c, including the support for
+  MHTMPDIR, TMPDIR, and TMP envvars.
+
+NOTE: The files sbr/m_scratch.c and sbr/m_tmpfil.c should be removed.
+Until more testing verifies changes to support new functions have not
+broken functionality, the files are be left in the tree, but comments
+have been added stating the functions in them should not be called.
+",2f689a1cb907a5de04e6d39ffd217a69af3216c7,352fe458a57061db81240c19fa4b356c7448463b,2010-02-04 01:39:21+00:00,Earl Hood,"diff --git a/ChangeLog b/ChangeLog
+index 992f51ce..2a9c1456 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -1,4 +1,19 @@
++2010-02-03  Earl Hood <earl@earlhood.com>
++
++	* Bug #15213, #18635: The use of the insecure m_scratch() and
++	  m_tmpfil() functions have been replaced by m_mktemp()
++	  or m_mktemp2() functions (defined in sbr/m_mktemp.c).
++	  The new functions use mkstemp() to securely create
++	  temporary files to avoid the numerous race conditions
++	  that exist with the old functions.  This does assume
++	  that mkstemp() is available.  Unsure if we need to
++	  create an alternative implementation if mkstemp() is
++	  not available.  More information about new temp file
++	  functions in m_mktemp.c, including the support for
++	  MHTMPDIR, TMPDIR, and TMP envvars.
++
+ 2010-02-02  Earl Hood <earl@earlhood.com>
++
+ 	* mts/smtp/smtp.c: added SASL support if mts configuration
+ 	  setting is set to ""sendmail"".  This is useful if sendmail
+ 	  conf option is to a custom script that creates a proxy
+diff --git a/etc/Makefile.in b/etc/Makefile.in
+index 66e42ada..cffd9399 100644
+--- a/etc/Makefile.in
++++ b/etc/Makefile.in
+@@ -100,18 +100,12 @@ install-etc-files:
+ 	for path in $$INSTALL_FILES; do \
+ 	  file=`basename $$path`; \
+ 	  echo ""Installing $$file...""; \
+-	  if [ -f $(DESTDIR)$(etcdir)/$$file ]; then \
+-	    mv $(DESTDIR)$(etcdir)/$$file $(DESTDIR)$(etcdir)/$$file.prev; \
+-	    $(INSTALL_DATA) $$path $(DESTDIR)$(etcdir)/$$file; \
+-	    if diff $(DESTDIR)$(etcdir)/$$file.prev $(DESTDIR)$(etcdir)/$$file; then \
+-	      rm $(DESTDIR)$(etcdir)/$$file.prev; \
++	  if [ -f ""$(DESTDIR)$(etcdir)/$$file"" ]; then \
++	    if cmp -s ""$$path"" ""$(DESTDIR)$(etcdir)/$$file""; then \
++	      echo ""$(DESTDIR)$(etcdir)/$$file unchanged, skipped""; \
+ 	    else \
+-	      echo; \
+-	      echo ""  Previous version of $$file saved as $$file.prev due\c"";\
+-	      echo   "" to diffs.""; \
+-	      echo ""  Please merge any local config changes into the new\c""; \
+-	      echo   "" $$file.""; \
+-	      echo; \
++	      $(INSTALL_DATA) ""$$path"" ""$(DESTDIR)$(etcdir)/$$file.dist""; \
++	      echo ""INFO: $(DESTDIR)$(etcdir)/$$file installed with .dist extension""; \
+ 	    fi; \
+ 	  else \
+ 	    $(INSTALL_DATA) $$path $(DESTDIR)$(etcdir)/$$file; \
+diff --git a/h/prototypes.h b/h/prototypes.h
+index 32f6a3d3..b0443907 100644
+--- a/h/prototypes.h
++++ b/h/prototypes.h
+@@ -81,6 +81,8 @@ char *m_name (int);
+ int m_putenv (char *, char *);
+ char *m_scratch (char *, char *);
+ char *m_tmpfil (char *);
++char *m_mktemp(const char *, int *, FILE **);
++char *m_mktemp2(const char *, const char *, int *, FILE **);
+ void m_unknown(FILE *);
+ int makedir (char *);
+ char *nmh_getpass(const char *);
+diff --git a/sbr/Makefile.in b/sbr/Makefile.in
+index b8787d17..69a280cd 100644
+--- a/sbr/Makefile.in
++++ b/sbr/Makefile.in
+@@ -78,7 +78,7 @@ SRCS = addrsbr.c ambigsw.c atooi.c brkstring.c			\
+ 	seq_setprev.c seq_setunseen.c showfile.c signals.c		\
+ 	smatch.c snprintb.c ssequal.c strcasecmp.c			\
+ 	strindex.c trimcpy.c uprf.c vfgets.c fmt_def.c			\
+-	m_msgdef.c mf.c utils.c
++	m_msgdef.c mf.c utils.c m_mktemp.c
+ 
+ # source for compatibility functions
+ COMPAT = memmove.c snprintf.c strdup.c strerror.c
+diff --git a/sbr/fmt_rfc2047.c b/sbr/fmt_rfc2047.c
+index 9d5b6d3c..87fddb90 100644
+--- a/sbr/fmt_rfc2047.c
++++ b/sbr/fmt_rfc2047.c
+@@ -71,7 +71,7 @@ decode_rfc2047 (char *str, char *dst, size_t dstlen)
+     int whitespace = 0;		/* how much whitespace between encodings? */
+ #ifdef HAVE_ICONV
+     int use_iconv = 0;          /* are we converting encoding with iconv? */
+-    iconv_t cd;
++    iconv_t cd = NULL;
+     int fromutf8 = 0;
+     char *saveq, *convbuf = NULL;
+     size_t savedstlen;
+diff --git a/sbr/fmt_scan.c b/sbr/fmt_scan.c
+index ca4020b0..9054963e 100644
+--- a/sbr/fmt_scan.c
++++ b/sbr/fmt_scan.c
+@@ -297,7 +297,7 @@ fmt_scan (struct format *format, char *scanl, int width, int *dat)
+ {
+     char *cp, *ep;
+     unsigned char *sp;
+-    char *savestr;
++    char *savestr = NULL;
+     unsigned char *str = NULL;
+     char buffer[BUFSIZ], buffer2[BUFSIZ];
+     int i, c, ljust, n;
+diff --git a/sbr/getarguments.c b/sbr/getarguments.c
+index fc3d2c05..55fd06e5 100644
+--- a/sbr/getarguments.c
++++ b/sbr/getarguments.c
+@@ -15,7 +15,7 @@
+ char **
+ getarguments (char *invo_name, int argc, char **argv, int check_context)
+ {
+-    char *cp, **ap, **bp, **arguments;
++    char *cp = NULL, **ap = NULL, **bp = NULL, **arguments = NULL;
+     int n = 0;
+ 
+     /*
+@@ -35,7 +35,7 @@ getarguments (char *invo_name, int argc, char **argv, int check_context)
+     bp = arguments;
+ 
+     /* Copy any arguments from profile/context */
+-    if (n > 0) {
++    if (ap != NULL && n > 0) {
+ 	while (*ap)
+ 	    *bp++ = *ap++;
+      }
+diff --git a/sbr/m_mktemp.c b/sbr/m_mktemp.c
+new file mode 100644
+index 00000000..22290363
+--- /dev/null
++++ b/sbr/m_mktemp.c
+@@ -0,0 +1,147 @@
++/*
++ * m_mktemp.c -- Construct a temporary file.
++ *
++ * $Id$
++ *
++ * This code is Copyright (c) 2010, by the authors of nmh.  See the
++ * COPYRIGHT file in the root directory of the nmh distribution for
++ * complete copyright information.
++ */
++
++#include <errno.h>
++#include <h/mh.h>
++
++static char *get_temp_dir();
++
++/*  Create a temporary file.  If pfx_in is null, the temporary file
++ *  will be created in the temporary directory (more on that later).
++ *  If pfx_in is not null, then the temporary file location will be
++ *  defined by the value pfx_in.
++ *
++ *  The file created will be at the pathname specified appended with
++ *  6 random (we hope :) characters.
++ *
++ *  The return value will be the pathname to the file created.
++ *
++ *  CAUTION: The return pointer references static data.  If
++ *  you need to modify, or save, the return string, make a copy of it
++ *  first.
++ *
++ *  When pfx_in is null, the temporary directory is determined as
++ *  follows, in order:
++ *  
++ *    MHTMPDIR envvar
++ *    TMPDIR envvar
++ *    TMP envvar
++ *    User's mail directory.
++ *
++ *  NOTE: One will probably use m_mktemp2() instead of this function.
++ *  For example, if you want to create a temp file in the defined
++ *  temporary directory, but with a custom basename prefix, do
++ *  something like the following:
++ *
++ *    char *tmp_pathname = m_mktemp2(NULL, ""mypre"", ...);
++ */
++char *
++m_mktemp (
++    const char *pfx_in,   /* Pathname prefix for temporary file. */
++    int *fd_ret,          /* (return,optional) File descriptor to temp file. */
++    FILE **fp_ret         /* (return,optional) FILE pointer to temp file. */
++)
++{
++    static char tmpfil[BUFSIZ];
++    int fd = -1;
++    int keep_open = 0;
++    mode_t oldmode = umask(077);
++
++    if (pfx_in == NULL) {
++        snprintf(tmpfil, sizeof(tmpfil), ""%s/nmhXXXXXX"", get_temp_dir());
++    } else {
++        snprintf(tmpfil, sizeof(tmpfil), ""%sXXXXXX"", pfx_in);
++    }
++
++    fd = mkstemp(tmpfil);
++    if (fd < 0) {
++        umask(oldmode);
++        return NULL;
++    }
++    if (fd_ret != NULL) {
++        *fd_ret = fd;
++        keep_open = 1;
++    }
++    if (fp_ret != NULL) {
++        FILE *fp = fdopen(fd, ""w+"");
++        if (fp == NULL) {
++            int olderr = errno;
++            unlink(tmpfil);
++            close(fd);
++            errno = olderr;
++            umask(oldmode);
++            return NULL;
++        }
++        *fp_ret = fp;
++        keep_open = 1;
++    }
++    if (!keep_open) {
++        close(fd);
++    }
++    umask(oldmode);
++    return tmpfil;
++}
++
++/* This version allows one to specify the directory the temp file should
++ * by created based on a given pathname.  Although m_mktemp() technically
++ * supports this, this version is when the directory is defined by
++ * a separate variable from the prefix, eliminating the caller from having
++ * to do string manipulation to generate the desired. pathname prefix.
++ *
++ * The pfx_in parameter specifies a basename prefix for the file.  If dir_in
++ * is NULL, then the defined temporary directory (see comments to m_mktemp()
++ * above) is used to create the temp file.
++ */
++char *
++m_mktemp2 (
++    const char *dir_in,   /* Directory to place temp file. */
++    const char *pfx_in,   /* Basename prefix for temp file. */
++    int *fd_ret,          /* (return,optional) File descriptor to temp file. */
++    FILE **fp_ret         /* (return,optional) FILE pointer to temp file. */
++)
++{
++    static char buffer[BUFSIZ];
++    char *cp;
++
++    if (dir_in == NULL) {
++        if (pfx_in == NULL) {
++            return m_mktemp(NULL, fd_ret, fp_ret);
++        }
++        snprintf(buffer, sizeof(buffer), ""%s/%s"", get_temp_dir(), pfx_in);
++        return m_mktemp(buffer, fd_ret, fp_ret);
++    }
++
++    if ((cp = r1bindex ((char *)dir_in, '/')) == dir_in) {
++        /* No directory component */
++        return m_mktemp(pfx_in, fd_ret, fp_ret);
++    }
++    int n = (int)(cp-dir_in-1); /* Length of dir component */
++    snprintf(buffer, sizeof(buffer), ""%.*s%s"", n, dir_in, pfx_in);
++    return m_mktemp(buffer, fd_ret, fp_ret);
++}
++
++
++static char *
++get_temp_dir()
++{
++    // Ignore envvars if we are setuid
++    if ((getuid()==geteuid()) && (getgid()==getegid())) {
++        char *tmpdir = NULL;
++        tmpdir = getenv(""MHTMPDIR"");
++        if (tmpdir != NULL && *tmpdir != '\0') return tmpdir;
++
++        tmpdir = getenv(""TMPDIR"");
++        if (tmpdir != NULL && *tmpdir != '\0') return tmpdir;
++
++        tmpdir = getenv(""TMP"");
++        if (tmpdir != NULL && *tmpdir != '\0') return tmpdir;
++    }
++    return m_maildir("""");
++}
+diff --git a/sbr/m_scratch.c b/sbr/m_scratch.c
+index df635316..353da562 100644
+--- a/sbr/m_scratch.c
++++ b/sbr/m_scratch.c
+@@ -11,7 +11,10 @@
+ 
+ #include <h/mh.h>
+ 
+-
++/***************************************************************************
++ * DO NOT USE THIS FUNCTION!  IT WILL BE REMOVED IN THE FUTURE.
++ * THIS FUNCTION IS INSECURE.  USE THE FUNCTIONS DEFINED IN m_mktemp.c.
++ ***************************************************************************/
+ char *
+ m_scratch (char *file, char *template)
+ {
+diff --git a/sbr/m_tmpfil.c b/sbr/m_tmpfil.c
+index 907c6244..4382061f 100644
+--- a/sbr/m_tmpfil.c
++++ b/sbr/m_tmpfil.c
+@@ -1,4 +1,3 @@
+-
+ /*
+  * m_tmpfil.c -- construct a temporary file
+  *
+@@ -11,7 +10,10 @@
+ 
+ #include <h/mh.h>
+ 
+-
++/***************************************************************************
++ * DO NOT USE THIS FUNCTION!  IT WILL BE REMOVED IN THE FUTURE.
++ * THIS FUNCTION IS INSECURE.  USE THE FUNCTIONS DEFINED IN m_mktemp.c.
++ ***************************************************************************/
+ char *
+ m_tmpfil (char *template)
+ {
+diff --git a/sbr/pidwait.c b/sbr/pidwait.c
+index 6043bee1..607538f5 100644
+--- a/sbr/pidwait.c
++++ b/sbr/pidwait.c
+@@ -22,7 +22,7 @@ int
+ pidwait (pid_t id, int sigsok)
+ {
+     pid_t pid;
+-    SIGNAL_HANDLER istat, qstat;
++    SIGNAL_HANDLER istat = NULL, qstat = NULL;
+ 
+ #ifdef HAVE_UNION_WAIT
+     union wait status;
+diff --git a/uip/annosbr.c b/uip/annosbr.c
+index e8ef50ae..7f1bdde7 100644
+--- a/uip/annosbr.c
++++ b/uip/annosbr.c
+@@ -179,20 +179,15 @@ annosbr (int fd, char *file, char *comp, char *text, int inplace, int datesw, in
+     FILE	*tmp;
+     int		c;		/* current character */
+     int		count;		/* header field (annotation) counter */
+-    char	*field;		/* buffer for header field */
+-    int		field_size;	/* size of field buffer */
+-    FILE	*fp;		/* file pointer made from locked file descriptor */
++    char	*field = NULL;	/* buffer for header field */
++    int		field_size = 0;	/* size of field buffer */
++    FILE	*fp = NULL;	/* file pointer made from locked file descriptor */
+     int		length;		/* length of field name */
+     int		n;		/* number of bytes written */
+ 
+     mode = fstat (fd, &st) != NOTOK ? (st.st_mode & 0777) : m_gmprot ();
+ 
+-    strncpy (tmpfil, m_scratch (file, ""annotate""), sizeof(tmpfil));
+-
+-    if ((tmp = fopen (tmpfil, ""w"")) == NULL) {
+-	admonish (tmpfil, ""unable to create"");
+-	return 1;
+-    }
++    strncpy (tmpfil, m_mktemp2(file, ""annotate"", NULL, &tmp), sizeof(tmpfil));
+     chmod (tmpfil, mode);
+ 
+     /*
+diff --git a/uip/burst.c b/uip/burst.c
+index 15756d30..f9dd9510 100644
+--- a/uip/burst.c
++++ b/uip/burst.c
+@@ -347,12 +347,11 @@ burst (struct msgs **mpp, int msgnum, struct smsg *smsgs, int numburst,
+     i = inplace ? msgnum + numburst : mp->hghmsg;
+     for (j = numburst; j >= (inplace ? 0 : 1); i--, j--) {
+ 	strncpy (f1, m_name (i), sizeof(f1));
+-	strncpy (f2, m_scratch ("""", invo_name), sizeof(f2));
++	strncpy (f2, m_mktemp(invo_name, NULL, &out), sizeof(f2));
++
+ 	if (verbosw && i != msgnum)
+ 	    printf (""message %d of digest %d becomes message %d\n"", j, msgnum, i);
+ 
+-	if ((out = fopen (f2, ""w"")) == NULL)
+-	    adios (f2, ""unable to write message"");
+ 	chmod (f2, mode);
+ 	fseek (in, smsgs[j].s_start, SEEK_SET);
+ 	cpybrst (in, out, msgnam, f2,
+diff --git a/uip/distsbr.c b/uip/distsbr.c
+index 1b5f5e13..e5f7bc55 100644
+--- a/uip/distsbr.c
++++ b/uip/distsbr.c
+@@ -132,6 +132,7 @@ ready_msg (char *msgnam)
+     int state, out;
+     char name[NAMESZ], buffer[BUFSIZ], tmpfil[BUFSIZ];
+     register FILE *ifp, *ofp;
++    char *cp = NULL;
+ 
+     if (hdrfd != NOTOK)
+ 	close (hdrfd), hdrfd = NOTOK;
+@@ -141,9 +142,12 @@ ready_msg (char *msgnam)
+     if ((ifp = fopen (msgnam, ""r"")) == NULL)
+ 	adios (msgnam, ""unable to open message"");
+ 
+-    strncpy (tmpfil, m_tmpfil (""dist""), sizeof(tmpfil));
+-    if ((hdrfd = open (tmpfil, O_RDWR | O_CREAT | O_TRUNC, 0600)) == NOTOK)
+-	adios (tmpfil, ""unable to re-open temporary file"");
++    cp = m_mktemp2(NULL, ""dist"", &hdrfd, NULL);
++    if (cp == NULL) {
++        adios(""distsbr"", ""unable to create temporary file"");
++    }
++    fchmod(hdrfd, 0600);
++    strncpy(tmpfil, cp, sizeof(tmpfil));
+     if ((out = dup (hdrfd)) == NOTOK
+ 	    || (ofp = fdopen (out, ""w"")) == NULL)
+ 	adios (NULL, ""no file descriptors -- you lose big"");
+@@ -171,9 +175,12 @@ ready_msg (char *msgnam)
+ 	    case BODYEOF: 
+ 		fclose (ofp);
+ 
+-		strncpy (tmpfil, m_tmpfil (""dist""), sizeof(tmpfil));
+-		if ((txtfd = open (tmpfil, O_RDWR | O_CREAT | O_TRUNC, 0600)) == NOTOK)
+-		    adios (tmpfil, ""unable to open temporary file"");
++                cp = m_mktemp2(NULL, ""dist"", &txtfd, NULL);
++                if (cp == NULL) {
++                    adios(""distsbr"", ""unable to create temporary file"");
++                }
++                fchmod(txtfd, 0600);
++		strncpy (tmpfil, cp, sizeof(tmpfil));
+ 		if ((out = dup (txtfd)) == NOTOK
+ 			|| (ofp = fdopen (out, ""w"")) == NULL)
+ 		    adios (NULL, ""no file descriptors -- you lose big"");
+diff --git a/uip/forw.c b/uip/forw.c
+index 2d4f2d53..7892d7f5 100644
+--- a/uip/forw.c
++++ b/uip/forw.c
+@@ -650,10 +650,11 @@ build_form (char *form, char *digest, int volume, int issue)
+     int fmtsize;
+     register char *nfs;
+     char *line, tmpfil[BUFSIZ];
+-    register FILE *tmp;
++    FILE *tmp;
+     register struct comp *cptr;
+     struct format *fmt;
+     int dat[5];
++    char *cp = NULL;
+ 
+     /* Get new format string */
+     nfs = new_fs (form, NULL, NULL);
+@@ -675,9 +676,9 @@ build_form (char *form, char *digest, int volume, int issue)
+     dat[3] = fmtsize;
+     dat[4] = 0;
+ 
+-    strncpy (tmpfil, m_tmpfil (invo_name), sizeof(tmpfil));
+-    if ((tmp = fopen (tmpfil, ""w+"")) == NULL)
+-	adios (tmpfil, ""unable to create"");
++    cp = m_mktemp2(NULL, invo_name, NULL, &tmp);
++    if (cp == NULL) adios(""forw"", ""unable to create temporary file"");
++    strncpy (tmpfil, cp, sizeof(tmpfil));
+     unlink (tmpfil);
+     if ((in = dup (fileno (tmp))) == NOTOK)
+ 	adios (""dup"", ""unable to"");
+diff --git a/uip/inc.c b/uip/inc.c
+index fce9cec2..d31cdf76 100644
+--- a/uip/inc.c
++++ b/uip/inc.c
+@@ -236,18 +236,18 @@ main (int argc, char **argv)
+ {
+     int chgflag = 1, trnflag = 1;
+     int noisy = 1, width = 0;
+-    int rpop, i, hghnum, msgnum;
++    int rpop, i, hghnum = 0, msgnum = 0;
+     int kpop = 0, sasl = 0;
+-    char *cp, *maildir, *folder = NULL;
++    char *cp, *maildir = NULL, *folder = NULL;
+     char *format = NULL, *form = NULL;
+     char *host = NULL, *user = NULL, *proxy = NULL;
+     char *audfile = NULL, *from = NULL, *saslmech = NULL;
+     char buf[BUFSIZ], **argp, *nfs, **arguments;
+-    struct msgs *mp;
++    struct msgs *mp = NULL;
+     struct stat st, s1;
+     FILE *aud = NULL;
+-    char	b[MAXPATHLEN + 1];
+-    char	*maildir_copy;		/* copy of mail directory because the static gets overwritten */
++    char b[MAXPATHLEN + 1];
++    char *maildir_copy = NULL;	/* copy of mail directory because the static gets overwritten */
+ 
+ #ifdef POP
+     int nmsgs, nbytes, p = 0;
+diff --git a/uip/mhbuild.c b/uip/mhbuild.c
+index 9d9f553a..fbe2b2c6 100644
+--- a/uip/mhbuild.c
++++ b/uip/mhbuild.c
+@@ -104,6 +104,7 @@ static void unlink_done (int) NORETURN;
+ /* mhbuildsbr.c */
+ CT build_mime (char *);
+ int output_message (CT, char *);
++int output_message_fp (CT, FILE *, char*);
+ 
+ /* mhlistsbr.c */
+ int list_all_messages (CT *, int, int, int, int);
+@@ -124,7 +125,8 @@ main (int argc, char **argv)
+     char buffer[BUFSIZ], *compfile = NULL;
+     char **argp, **arguments;
+     CT ct, cts[2];
+-    FILE *fp;
++    FILE *fp = NULL;
++    FILE *fp_out = NULL;
+ 
+     done=unlink_done;
+ 
+@@ -305,11 +307,8 @@ main (int argc, char **argv)
+      * Process the composition file from standard input.
+      */
+     if (compfile[0] == '-' && compfile[1] == '\0') {
+-
+ 	/* copy standard input to temporary file */
+-	strncpy (infile, m_scratch ("""", invo_name), sizeof(infile));
+-	if ((fp = fopen (infile, ""w"")) == NULL)
+-	    adios (infile, ""unable to open"");
++	strncpy (infile, m_mktemp(invo_name, NULL, &fp), sizeof(infile));
+ 	while (fgets (buffer, BUFSIZ, stdin))
+ 	    fputs (buffer, fp);
+ 	fclose (fp);
+@@ -321,11 +320,12 @@ main (int argc, char **argv)
+ 	cts[1] = NULL;
+ 
+ 	/* output MIME message to this temporary file */
+-	strncpy (outfile, m_scratch ("""", invo_name), sizeof(outfile));
++	strncpy (outfile, m_mktemp(invo_name, NULL, &fp_out), sizeof(outfile));
+ 	unlink_outfile = 1;
+ 
+ 	/* output the message */
+-	output_message (ct, outfile);
++	output_message_fp (ct, fp_out, outfile);
++        fclose(fp_out);
+ 
+ 	/* output the temp file to standard output */
+ 	if ((fp = fopen (outfile, ""r"")) == NULL)
+@@ -354,11 +354,13 @@ main (int argc, char **argv)
+     cts[1] = NULL;
+ 
+     /* output MIME message to this temporary file */
+-    strncpy (outfile, m_scratch (compfile, invo_name), sizeof(outfile));
++    strncpy(outfile, m_mktemp2(compfile, invo_name, NULL, &fp_out),
++            sizeof(outfile));
+     unlink_outfile = 1;
+ 
+     /* output the message */
+-    output_message (ct, outfile);
++    output_message_fp (ct, fp_out, outfile);
++    fclose(fp_out);
+ 
+     /*
+      * List the message info
+@@ -368,12 +370,13 @@ main (int argc, char **argv)
+ 
+     /* Rename composition draft */
+     snprintf (buffer, sizeof(buffer), ""%s.orig"", m_backup (compfile));
+-    if (rename (compfile, buffer) == NOTOK)
+-	adios (compfile, ""unable to rename %s to"", buffer);
++    if (rename (compfile, buffer) == NOTOK) {
++	adios (compfile, ""unable to rename comp draft %s to"", buffer);
++    }
+ 
+     /* Rename output file to take its place */
+     if (rename (outfile, compfile) == NOTOK) {
+-	advise (outfile, ""unable to rename %s to"", compfile);
++	advise (outfile, ""unable to rename output %s to"", compfile);
+ 	rename (buffer, compfile);
+ 	done (1);
+     }
+diff --git a/uip/mhbuildsbr.c b/uip/mhbuildsbr.c
+index b75034ab..d95eee58 100644
+--- a/uip/mhbuildsbr.c
++++ b/uip/mhbuildsbr.c
+@@ -414,14 +414,15 @@ user_content (FILE *in, char *file, char *buf, CT *ctp)
+ 	long pos;
+ 	char content[BUFSIZ];
+ 	FILE *out;
++        char *cp;
++
++        cp = m_mktemp2(NULL, invo_name, NULL, &out);
++        if (cp == NULL) adios(""mhbuildsbr"", ""unable to create temporary file"");
+ 
+ 	/* use a temp file to collect the plain text lines */
+-	ce->ce_file = add (m_tmpfil (invo_name), NULL);
++	ce->ce_file = add (cp, NULL);
+ 	ce->ce_unlink = 1;
+ 
+-	if ((out = fopen (ce->ce_file, ""w"")) == NULL)
+-	    adios (ce->ce_file, ""unable to open for writing"");
+-
+ 	if (buf[0] == '#' && buf[1] == '<') {
+ 	    strncpy (content, buf + 2, sizeof(content));
+ 	    inlineD = 1;
+@@ -1007,11 +1008,16 @@ compose_content (CT ct)
+ 	    char *vec[4], buffer[BUFSIZ];
+ 	    FILE *out;
+ 	    CI ci = &ct->c_ctinfo;
++            char *tfile = NULL;
+ 
+ 	    if (!(cp = ci->ci_magic))
+ 		adios (NULL, ""internal error(5)"");
+ 
+-	    ce->ce_file = add (m_tmpfil (invo_name), NULL);
++            tfile = m_mktemp2(NULL, invo_name, NULL, NULL);
++            if (tfile == NULL) {
++                adios(""mhbuildsbr"", ""unable to create temporary file"");
++            }
++	    ce->ce_file = add (tfile, NULL);
+ 	    ce->ce_unlink = 1;
+ 
+ 	    xstdout = 0;
+@@ -1152,14 +1158,14 @@ static int
+ scan_content (CT ct)
+ {
+     int len;
+-    int check8bit, contains8bit = 0;	  /* check if contains 8bit data                */
+-    int checklinelen, linelen = 0;	  /* check for long lines                       */
+-    int checkboundary, boundaryclash = 0; /* check if clashes with multipart boundary   */
+-    int checklinespace, linespace = 0;	  /* check if any line ends with space          */
+-    int checkebcdic, ebcdicunsafe = 0;	  /* check if contains ebcdic unsafe characters */
+-    unsigned char *cp, buffer[BUFSIZ];
+-    struct text *t;
+-    FILE *in;
++    int check8bit = 0, contains8bit = 0;  /* check if contains 8bit data                */
++    int checklinelen = 0, linelen = 0;	  /* check for long lines                       */
++    int checkboundary = 0, boundaryclash = 0; /* check if clashes with multipart boundary   */
++    int checklinespace = 0, linespace = 0;  /* check if any line ends with space          */
++    int checkebcdic = 0, ebcdicunsafe = 0;  /* check if contains ebcdic unsafe characters */
++    unsigned char *cp = NULL, buffer[BUFSIZ];
++    struct text *t = NULL;
++    FILE *in = NULL;
+     CE ce = ct->c_cefile;
+ 
+     /*
+diff --git a/uip/mhlsbr.c b/uip/mhlsbr.c
+index 420dbb63..a3ef6ba6 100644
+--- a/uip/mhlsbr.c
++++ b/uip/mhlsbr.c
+@@ -794,8 +794,8 @@ parse (void)
+ static void
+ process (char *folder, char *fname, int ofilen, int ofilec)
+ {
+-    char *cp;
+-    FILE *fp;
++    char *cp = NULL;
++    FILE *fp = NULL;
+     struct mcomp *c1;
+ 
+     switch (setjmp (env)) {
+@@ -1687,8 +1687,8 @@ doface (struct mcomp *c1)
+ int
+ mhlsbr (int argc, char **argv, FILE *(*action)())
+ {
+-    SIGNAL_HANDLER istat, pstat, qstat;
+-    char *cp;
++    SIGNAL_HANDLER istat = NULL, pstat = NULL, qstat = NULL;
++    char *cp = NULL;
+     struct mcomp *c1;
+ 
+     switch (setjmp (mhlenv)) {
+diff --git a/uip/mhmail.c b/uip/mhmail.c
+index f08a583a..e906b1d3 100644
+--- a/uip/mhmail.c
++++ b/uip/mhmail.c
+@@ -52,6 +52,7 @@ main (int argc, char **argv)
+     char *from = NULL, *body = NULL, **argp, **arguments;
+     char *vec[5], buf[BUFSIZ];
+     FILE *out;
++    char *tfile = NULL;
+ 
+ #ifdef LOCALE
+     setlocale(LC_ALL, """");
+@@ -125,10 +126,11 @@ main (int argc, char **argv)
+ 
+     if (tolist == NULL)
+ 	adios (NULL, ""usage: %s addrs ... [switches]"", invo_name);
+-    strncpy (tmpfil, m_tmpfil (invo_name), sizeof(tmpfil));
+-    if ((out = fopen (tmpfil, ""w"")) == NULL)
+-	adios (tmpfil, ""unable to write"");
+-    chmod (tmpfil, 0600);
++
++    tfile = m_mktemp2(NULL, invo_name, NULL, &out);
++    if (tfile == NULL) adios(""mhmail"", ""unable to create temporary file"");
++    chmod(tfile, 0600);
++    strncpy (tmpfil, tfile, sizeof(tmpfil));
+ 
+     SIGNAL2 (SIGINT, intrser);
+ 
+diff --git a/uip/mhoutsbr.c b/uip/mhoutsbr.c
+index 2ebdc1ff..92352539 100644
+--- a/uip/mhoutsbr.c
++++ b/uip/mhoutsbr.c
+@@ -70,6 +70,7 @@ static char nib2b64[0x40+1] =
+  * prototypes
+  */
+ int output_message (CT, char *);
++int output_message_fp (CT, FILE *, char *);
+ int writeBase64aux (FILE *, FILE *);
+ 
+ /*
+@@ -90,27 +91,33 @@ static int writeBase64 (CT, FILE *);
+  */
+ 
+ int
+-output_message (CT ct, char *file)
++output_message_fp (CT ct, FILE *fp, char *file)
+ {
+-    FILE *fp;
+-
+-    if ((fp = fopen (file, ""w"")) == NULL) {
+-	advise (file, ""unable to open for writing"");
+-	return NOTOK;
+-    }
+-
+     if (output_content (ct, fp) == NOTOK)
+ 	return NOTOK;
+ 
+     if (fflush (fp)) {
+-	advise (file, ""error writing to"");
++	advise ((file?file:""<FILE*>""), ""error writing to"");
+ 	return NOTOK;
+     }
+-    fclose (fp);
+-
+     return OK;
+ }
+ 
++int
++output_message (CT ct, char *file)
++{
++    FILE *fp;
++    int status;
++
++    if ((fp = fopen (file, ""w"")) == NULL) {
++	advise (file, ""unable to open for writing"");
++	return NOTOK;
++    }
++    status = output_message_fp(ct, fp, file);
++    fclose(fp);
++    return status;
++}
++
+ 
+ /*
+  * Output a Content structure to a file.
+diff --git a/uip/mhparse.c b/uip/mhparse.c
+index 7c100006..bca79422 100644
+--- a/uip/mhparse.c
++++ b/uip/mhparse.c
+@@ -204,12 +204,14 @@ parse_mime (char *file)
+      * Check if file is actually standard input
+      */
+     if ((is_stdin = !(strcmp (file, ""-"")))) {
+-	file = add (m_tmpfil (invo_name), NULL);
+-	if ((fp = fopen (file, ""w+"")) == NULL) {
+-	    advise (file, ""unable to fopen for writing and reading"");
+-	    return NULL;
+-	}
++        char *tfile = m_mktemp2(NULL, invo_name, NULL, &fp);
++        if (tfile == NULL) {
++            advise(""mhparse"", ""unable to create temporary file"");
++            return NULL;
++        }
++	file = add (tfile, NULL);
+ 	chmod (file, 0600);
++
+ 	while (fgets (buffer, sizeof(buffer), stdin))
+ 	    fputs (buffer, fp);
+ 	fflush (fp);
+@@ -1764,7 +1766,7 @@ openBase64 (CT ct, char **file)
+     }
+ 
+     if (*file == NULL) {
+-	ce->ce_file = add (m_scratch ("""", tmp), NULL);
++	ce->ce_file = add (m_mktemp(tmp, NULL, NULL), NULL);
+ 	ce->ce_unlink = 1;
+     } else {
+ 	ce->ce_file = add (*file, NULL);
+@@ -1781,8 +1783,21 @@ openBase64 (CT ct, char **file)
+                   ci->ci_type);
+         cp = context_find (buffer);
+     }
+-    if (cp != NULL && *cp != '\0')
+-        ce->ce_file = add (cp, ce->ce_file);
++    if (cp != NULL && *cp != '\0') {
++        if (ce->ce_unlink) {
++            // Temporary file already exists, so we rename to
++            // version with extension.
++            char *file_org = strdup(ce->ce_file);
++            ce->ce_file = add (cp, ce->ce_file);
++            if (rename(file_org, ce->ce_file)) {
++                adios (ce->ce_file, ""unable to rename %s to "", file_org);
++            }
++            free(file_org);
++
++        } else {
++            ce->ce_file = add (cp, ce->ce_file);
++        }
++    }
+ 
+     if ((ce->ce_fp = fopen (ce->ce_file, ""w+"")) == NULL) {
+ 	content_error (ce->ce_file, ct, ""unable to fopen for reading/writing"");
+@@ -1972,7 +1987,7 @@ openQuoted (CT ct, char **file)
+     }
+ 
+     if (*file == NULL) {
+-	ce->ce_file = add (m_scratch ("""", tmp), NULL);
++	ce->ce_file = add (m_mktemp(tmp, NULL, NULL), NULL);
+ 	ce->ce_unlink = 1;
+     } else {
+ 	ce->ce_file = add (*file, NULL);
+@@ -1989,8 +2004,21 @@ openQuoted (CT ct, char **file)
+                   ci->ci_type);
+         cp = context_find (buffer);
+     }
+-    if (cp != NULL && *cp != '\0')
+-        ce->ce_file = add (cp, ce->ce_file);
++    if (cp != NULL && *cp != '\0') {
++        if (ce->ce_unlink) {
++            // Temporary file already exists, so we rename to
++            // version with extension.
++            char *file_org = strdup(ce->ce_file);
++            ce->ce_file = add (cp, ce->ce_file);
++            if (rename(file_org, ce->ce_file)) {
++                adios (ce->ce_file, ""unable to rename %s to "", file_org);
++            }
++            free(file_org);
++
++        } else {
++            ce->ce_file = add (cp, ce->ce_file);
++        }
++    }
+ 
+     if ((ce->ce_fp = fopen (ce->ce_file, ""w+"")) == NULL) {
+ 	content_error (ce->ce_file, ct, ""unable to fopen for reading/writing"");
+@@ -2177,7 +2205,7 @@ open7Bit (CT ct, char **file)
+     }
+ 
+     if (*file == NULL) {
+-	ce->ce_file = add (m_scratch ("""", tmp), NULL);
++	ce->ce_file = add (m_mktemp(tmp, NULL, NULL), NULL);
+ 	ce->ce_unlink = 1;
+     } else {
+ 	ce->ce_file = add (*file, NULL);
+@@ -2194,8 +2222,21 @@ open7Bit (CT ct, char **file)
+                   ci->ci_type);
+         cp = context_find (buffer);
+     }
+-    if (cp != NULL && *cp != '\0')
+-        ce->ce_file = add (cp, ce->ce_file);
++    if (cp != NULL && *cp != '\0') {
++        if (ce->ce_unlink) {
++            // Temporary file already exists, so we rename to
++            // version with extension.
++            char *file_org = strdup(ce->ce_file);
++            ce->ce_file = add (cp, ce->ce_file);
++            if (rename(file_org, ce->ce_file)) {
++                adios (ce->ce_file, ""unable to rename %s to "", file_org);
++            }
++            free(file_org);
++
++        } else {
++            ce->ce_file = add (cp, ce->ce_file);
++        }
++    }
+ 
+     if ((ce->ce_fp = fopen (ce->ce_file, ""w+"")) == NULL) {
+ 	content_error (ce->ce_file, ct, ""unable to fopen for reading/writing"");
+@@ -2545,7 +2586,7 @@ openFTP (CT ct, char **file)
+     else if (caching)
+ 	ce->ce_file = add (cachefile, NULL);
+     else
+-	ce->ce_file = add (m_scratch ("""", tmp), NULL);
++	ce->ce_file = add (m_mktemp(tmp, NULL, NULL), NULL);
+ 
+     if ((ce->ce_fp = fopen (ce->ce_file, ""w+"")) == NULL) {
+ 	content_error (ce->ce_file, ct, ""unable to fopen for reading/writing"");
+@@ -2747,7 +2788,7 @@ openMail (CT ct, char **file)
+     }
+ 
+     if (*file == NULL) {
+-	ce->ce_file = add (m_scratch ("""", tmp), NULL);
++	ce->ce_file = add (m_mktemp(tmp, NULL, NULL), NULL);
+ 	ce->ce_unlink = 1;
+     } else {
+ 	ce->ce_file = add (*file, NULL);
+diff --git a/uip/mhstoresbr.c b/uip/mhstoresbr.c
+index 1c05a42d..151b2e64 100644
+--- a/uip/mhstoresbr.c
++++ b/uip/mhstoresbr.c
+@@ -482,7 +482,7 @@ ct_compar (CT *a, CT *b)
+ static int
+ store_content (CT ct, CT p)
+ {
+-    int appending = 0, msgnum;
++    int appending = 0, msgnum = 0;
+     int is_partial = 0, first_partial = 0;
+     int last_partial = 0;
+     char *cp, buffer[BUFSIZ];
+@@ -560,7 +560,7 @@ store_content (CT ct, CT p)
+ 	char *tmpfilenam, *folder;
+ 
+ 	/* Store content in temporary file for now */
+-	tmpfilenam = m_scratch ("""", invo_name);
++	tmpfilenam = m_mktemp(invo_name, NULL, NULL);
+ 	ct->c_storage = add (tmpfilenam, NULL);
+ 
+ 	/* Get the folder name */
+diff --git a/uip/msh.c b/uip/msh.c
+index d87f92ea..f492a370 100644
+--- a/uip/msh.c
++++ b/uip/msh.c
+@@ -733,10 +733,10 @@ setup (char *file)
+ 
+ #ifdef BPOP
+     if (pmsh) {
+-	strncpy (tmpfil, m_tmpfil (invo_name), sizeof(tmpfil));
+-	if ((fp = fopen (tmpfil, ""w+"")) == NULL)
+-	    padios (tmpfil, ""unable to create"");
+-	unlink (tmpfil);
++        char *tfile = m_mktemp2(NULL, invo_name, NULL, &fp);
++        if (tfile == NULL) padios(""msh"", ""unable to create temporary file"");
++        unlink(tfile);
++	strncpy(tmpfil, tfile, sizeof(tmpfil));
+     }
+     else
+ #endif /* BPOP */
+@@ -996,10 +996,10 @@ msh_ready (int msgnum, int full)
+ 	if (Msgs[msgnum].m_top == 0)
+ 	    padios (NULL, ""msh_ready (%d, %d) botch"", msgnum, full);
+ 	if (!full) {
+-	    strncpy (tmpfil, m_tmpfil (invo_name), sizeof(tmpfil));
+-	    if ((yp = fopen (tmpfil, ""w+"")) == NULL)
+-		padios (tmpfil, ""unable to create"");
+-	    unlink (tmpfil);
++            char *tfile = m_mktemp2(NULL, invo_name, NULL, &yp);
++            if (tfile == NULL) padios(""msh"", ""unable to create temporary file"");
++            unlink(tfile);
++            strncpy(tmpfil, tfile, sizeof(tmpfil));
+ 
+ 	    if (pop_top (Msgs[msgnum].m_top, 4, pop_action) == NOTOK)
+ 		padios (NULL, ""%s"", response);
+@@ -1163,7 +1163,7 @@ scanstring (char *arg)
+ void
+ readids (int id)
+ {
+-    register int cur, seqnum, i, msgnum;
++    register int cur, seqnum, i=0, msgnum;
+ 
+     if (mp->curmsg == 0)
+ 	seq_setcur (mp, mp->lowmsg);
+diff --git a/uip/mshcmds.c b/uip/mshcmds.c
+index 147a261b..0201cbc8 100644
+--- a/uip/mshcmds.c
++++ b/uip/mshcmds.c
+@@ -867,6 +867,8 @@ forwcmd (char **args)
+     int	msgp = 0, vecp = 1, msgnum;
+     char *cp, *filter = NULL, buf[BUFSIZ];
+     char *msgs[MAXARGS], *vec[MAXARGS];
++    char *tfile = NULL;
++    char tmpfil[BUFSIZ];
+ 
+     if (fmsh) {
+ 	forkcmd (args, cmd_name);
+@@ -939,16 +941,12 @@ forwcmd (char **args)
+ 
+ 					/* foil search of .mh_profile */
+     snprintf (buf, sizeof(buf), ""%sXXXXXX"", invo_name);
+-/*
+-  Mkstemp work postponed until later -Doug
+-#ifdef HAVE_MKSTEMP
+-    vec[0] = (char *)mkstemp (buf);
+-#else
+-*/
+-    vec[0] = (char *)mktemp (buf);
+-/*
+-#endif
+-*/
++
++    tfile = m_mktemp(buf, NULL, NULL);
++    if (tfile == NULL) adios(""forwcmd"", ""unable to create temporary file"");
++    strncpy (tmpfil, tfile, sizeof(tmpfil));
++    vec[0] = tmpfil;
++
+     vec[vecp++] = ""-file"";
+     vec[vecp] = NULL;
+     if (!msgp)
+@@ -979,10 +977,14 @@ static void
+ forw (char *proc, char *filter, int vecp, char **vec)
+ {
+     int i, child_id, msgnum, msgcnt;
+-    char tmpfil[80], *args[MAXARGS];
++    char tmpfil[BUFSIZ], *args[MAXARGS];
+     FILE *out;
++    char *tfile = NULL;
++
++    tfile = m_mktemp2(NULL, invo_name, NULL, NULL);
++    if (tfile == NULL) adios(""forw"", ""unable to create temporary file"");
++    strncpy (tmpfil, tfile, sizeof(tmpfil));
+ 
+-    strncpy (tmpfil, m_tmpfil (invo_name), sizeof(tmpfil));
+     interrupted = 0;
+     if (filter)
+ 	switch (child_id = fork ()) {
+@@ -2995,8 +2997,9 @@ static int
+ process (int msgnum, char *proc, int vecp, char **vec)
+ {
+     int	child_id, status;
+-    char tmpfil[80];
++    char tmpfil[BUFSIZ];
+     FILE *out;
++    char *cp;
+ 
+     if (fmsh) {
+ 	strncpy (tmpfil, m_name (msgnum), sizeof(tmpfil));
+@@ -3007,23 +3010,20 @@ process (int msgnum, char *proc, int vecp, char **vec)
+ 	goto ready;
+     }
+ 
+-    strncpy (tmpfil, m_scratch ("""", invo_name), sizeof(tmpfil));
+-    if ((out = fopen (tmpfil, ""w"")) == NULL) {
+-	int olderr;
+-	char newfil[80];
+-
+-	olderr = errno;
+-	strncpy (newfil, m_tmpfil (invo_name), sizeof(newfil));
+-	if ((out = fopen (newfil, ""w"")) == NULL) {
++    cp = m_mktemp(invo_name, NULL, &out);
++    if (cp == NULL) {
++        /* Try again, but try to create under /tmp */
++	int olderr = errno;
++        cp = m_mktemp2(NULL, invo_name, NULL, &out);
++        if (cp == NULL) {
+ 	    errno = olderr;
+-	    advise (tmpfil, ""unable to create temporary file"");
++	    advise (NULL, ""unable to create temporary file"");
+ 	    return NOTOK;
+-	} else {
+-	    strncpy (tmpfil, newfil, sizeof(tmpfil));
+ 	}
+     }
+     copy_message (msgnum, out);
+     fclose (out);
++    strncpy(tmpfil, cp, sizeof(tmpfil));
+ 
+ ready: ;
+     fflush (stdout);
+@@ -3089,7 +3089,7 @@ static void
+ copy_digest (int msgnum, FILE *out)
+ {
+     char c;
+-    long pos;
++    long pos = 0L;
+     static char buffer[BUFSIZ];
+     register FILE *zp;
+ 
+diff --git a/uip/new.c b/uip/new.c
+index 81a1afb0..82d6db55 100644
+--- a/uip/new.c
++++ b/uip/new.c
+@@ -300,7 +300,7 @@ doit(char *cur, char *folders, char *sequences[])
+     struct node *first, *cur_node, *node, *last, *prev;
+     size_t folder_len;
+     int count, total = 0;
+-    char *command, *sequences_s;
++    char *command = NULL, *sequences_s = NULL;
+ 
+     if (cur == NULL || cur[0] == '\0') {
+         cur = ""inbox"";
+diff --git a/uip/popsbr.c b/uip/popsbr.c
+index 839e3d33..30e4c278 100644
+--- a/uip/popsbr.c
++++ b/uip/popsbr.c
+@@ -1103,7 +1103,7 @@ multiline (void)
+ static int
+ sasl_getline (char *s, int n, FILE *iop)
+ {
+-    int c;
++    int c = -2;
+     char *p;
+ 
+     p = s;
+diff --git a/uip/post.c b/uip/post.c
+index 75468185..ba898a4c 100644
+--- a/uip/post.c
++++ b/uip/post.c
+@@ -554,13 +554,14 @@ main (int argc, char **argv)
+ 	    if ((out = fopen (fill_in ? fill_in : ""/dev/null"", ""w"")) == NULL)
+ 		adios (""/dev/null"", ""unable to open"");
+ 	} else {
+-	    strncpy (tmpfil, m_scratch ("""", m_maildir (invo_name)),
+-		sizeof(tmpfil));
+-	    if ((out = fopen (tmpfil, ""w"")) == NULL) {
+-		strncpy (tmpfil, m_tmpfil (invo_name), sizeof(tmpfil));
+-		if ((out = fopen (tmpfil, ""w"")) == NULL)
+-		    adios (tmpfil, ""unable to create"");
+-	    }
++            char *cp = m_mktemp(m_maildir(invo_name), NULL, &out);
++            if (cp == NULL) {
++                cp = m_mktemp2(NULL, invo_name, NULL, &out);
++                if (cp == NULL) {
++		    adios (""post"", ""unable to create temporary file"");
++                }
++            }
++            strncpy(tmpfil, cp, sizeof(tmpfil));
+ 	    chmod (tmpfil, 0600);
+ 	}
+     }
+@@ -662,7 +663,7 @@ putfmt (char *name, char *str, FILE *out)
+     int count, grp, i, keep;
+     char *cp, *pp, *qp;
+     char namep[BUFSIZ];
+-    struct mailname *mp, *np;
++    struct mailname *mp = NULL, *np = NULL;
+     struct headers *hdr;
+ 
+     while (*str == ' ' || *str == '\t')
+@@ -1166,11 +1167,12 @@ make_bcc_file (int dashstuff)
+     pid_t child_id;
+     char *vec[6];
+     FILE *out;
++    char *tfile = NULL;
+ 
+-    strncpy (bccfil, m_tmpfil (""bccs""), sizeof(bccfil));
+-    if ((out = fopen (bccfil, ""w"")) == NULL)
+-	adios (bccfil, ""unable to create"");
++    tfile = m_mktemp2(NULL, ""bccs"", NULL, &out);
++    if (tfile == NULL) adios(""bcc"", ""unable to create temporary file"");
+     chmod (bccfil, 0600);
++    strncpy (bccfil, tfile, sizeof(bccfil));
+ 
+     fprintf (out, ""Date: %s\n"", dtime (&tclock, 0));
+     if (msgid)
+diff --git a/uip/prompter.c b/uip/prompter.c
+index 35f6860a..6f97a880 100644
+--- a/uip/prompter.c
++++ b/uip/prompter.c
+@@ -108,6 +108,7 @@ main (int argc, char **argv)
+     char buffer[BUFSIZ], tmpfil[BUFSIZ];
+     char **arguments, **argp;
+     FILE *in, *out;
++    char *tfile = NULL;
+ 
+ #ifdef LOCALE
+     setlocale(LC_ALL, """");
+@@ -185,10 +186,10 @@ main (int argc, char **argv)
+     if ((in = fopen (drft, ""r"")) == NULL)
+ 	adios (drft, ""unable to open"");
+ 
+-    strncpy (tmpfil, m_tmpfil (invo_name), sizeof(tmpfil));
+-    if ((out = fopen (tmpfil, ""w"")) == NULL)
+-	adios (tmpfil, ""unable to create"");
++    tfile = m_mktemp2(NULL, invo_name, NULL, &out);
++    if (tfile == NULL) adios(""prompter"", ""unable to create temporary file"");
+     chmod (tmpfil, 0600);
++    strncpy (tmpfil, tfile, sizeof(tmpfil));
+ 
+     /*
+      * Are we changing the kill or erase character?
+diff --git a/uip/rcvdist.c b/uip/rcvdist.c
+index 7ee47fd9..7d669109 100644
+--- a/uip/rcvdist.c
++++ b/uip/rcvdist.c
+@@ -44,7 +44,8 @@ main (int argc, char **argv)
+     int i, vecp = 1;
+     char *addrs = NULL, *cp, *form = NULL, buf[BUFSIZ];
+     char **argp, **arguments, *vec[MAXARGS];
+-    register FILE *fp;
++    FILE *fp;
++    char *tfile = NULL;
+ 
+     done=unlink_done;
+ 
+@@ -94,12 +95,18 @@ main (int argc, char **argv)
+ 	    invo_name);
+ 
+     umask (~m_gmprot ());
+-    strncpy (tmpfil, m_tmpfil (invo_name), sizeof(tmpfil));
+-    if ((fp = fopen (tmpfil, ""w+"")) == NULL)
+-	adios (tmpfil, ""unable to create"");
++
++    tfile = m_mktemp2(NULL, invo_name, NULL, &fp);
++    if (tfile == NULL) adios(""rcvdist"", ""unable to create temporary file"");
++    strncpy (tmpfil, tfile, sizeof(tmpfil));
++
+     cpydata (fileno (stdin), fileno (fp), ""message"", tmpfil);
+     fseek (fp, 0L, SEEK_SET);
+-    strncpy (drft, m_tmpfil (invo_name), sizeof(drft));
++
++    tfile = m_mktemp2(NULL, invo_name, NULL, NULL);
++    if (tfile == NULL) adios(""forw"", ""unable to create temporary file"");
++    strncpy (drft, tfile, sizeof(tmpfil));
++
+     rcvdistout (fp, form, addrs);
+     fclose (fp);
+ 
+diff --git a/uip/rcvstore.c b/uip/rcvstore.c
+index 21f6c776..668eb86e 100644
+--- a/uip/rcvstore.c
++++ b/uip/rcvstore.c
+@@ -173,9 +173,10 @@ main (int argc, char **argv)
+     SIGNAL (SIGTERM, SIG_IGN);
+ 
+     /* create a temporary file */
+-    tmpfilenam = m_scratch ("""", invo_name);
+-    if ((fd = creat (tmpfilenam, m_gmprot ())) == NOTOK)
+-	adios (tmpfilenam, ""unable to create"");
++    tmpfilenam = m_mktemp (invo_name, &fd, NULL);
++    if (tmpfilenam == NULL) {
++	adios (""rcvstore"", ""unable to create temporary file"");
++    }
+     chmod (tmpfilenam, m_gmprot());
+ 
+     /* copy the message from stdin into temp file */
+diff --git a/uip/rcvtty.c b/uip/rcvtty.c
+index 97c32284..333a3b2f 100644
+--- a/uip/rcvtty.c
++++ b/uip/rcvtty.c
+@@ -287,12 +287,12 @@ static int
+ header_fd (void)
+ {
+     int fd;
+-    char *nfs, tmpfil[BUFSIZ];
++    char *nfs;
++    char *tfile = NULL;
+ 
+-    strncpy (tmpfil, m_tmpfil (invo_name), sizeof(tmpfil));
+-    if ((fd = open (tmpfil, O_RDWR | O_CREAT | O_TRUNC, 0600)) == NOTOK)
+-	return NOTOK;
+-    unlink (tmpfil);
++    tfile = m_mktemp2(NULL, invo_name, &fd, NULL);
++    if (tfile == NULL) return NOTOK;
++    unlink (tfile);
+ 
+     rewind (stdin);
+ 
+diff --git a/uip/scansbr.c b/uip/scansbr.c
+index df182584..c5f03292 100644
+--- a/uip/scansbr.c
++++ b/uip/scansbr.c
+@@ -81,11 +81,11 @@ scan (FILE *inb, int innum, int outnum, char *nfs, int width, int curflg,
+     int i, compnum, encrypted, state;
+     unsigned char *cp, *tmpbuf;
+     char **nxtbuf;
+-    char *saved_c_text;
++    char *saved_c_text = NULL;
+     struct comp *cptr;
+     struct comp **savecomp;
+-    char *scnmsg;
+-    FILE *scnout;
++    char *scnmsg = NULL;
++    FILE *scnout = NULL;
+     char name[NAMESZ];
+     static int rlwidth, slwidth;
+ 
+diff --git a/uip/send.c b/uip/send.c
+index 43f4c022..8409654d 100644
+--- a/uip/send.c
++++ b/uip/send.c
+@@ -423,7 +423,7 @@ go_to_it:
+ 	    && (distsw = atoi (cp))
+ 	    && altmsg) {
+ 	vec[vecp++] = ""-dist"";
+-	distfile = getcpy (m_scratch (altmsg, invo_name));
++	distfile = getcpy (m_mktemp2 (altmsg, invo_name, NULL, NULL));
+ 	if (link (altmsg, distfile) == NOTOK) {
+ 	    if (errno != EXDEV
+ #ifdef EISREMOTE
+@@ -432,7 +432,7 @@ go_to_it:
+ 		)
+ 		adios (distfile, ""unable to link %s to"", altmsg);
+ 	    free (distfile);
+-	    distfile = getcpy (m_tmpfil (invo_name));
++	    distfile = getcpy (m_mktemp2(NULL, invo_name, NULL, NULL));
+ 	    {
+ 		int in, out;
+ 		struct stat st;
+diff --git a/uip/sendsbr.c b/uip/sendsbr.c
+index fd21acd3..65b5ba1b 100644
+--- a/uip/sendsbr.c
++++ b/uip/sendsbr.c
+@@ -125,8 +125,11 @@ sendsbr (char **vec, int vecp, char *drft, struct stat *st, int rename_drft, cha
+ 	 * rename the draft file.  I'm not quite sure why.
+ 	 */
+ 	if (pushsw && unique) {
+-	    if (rename (drft, strncpy (file, m_scratch (drft, invo_name), sizeof(file)))
+-		    == NOTOK)
++            char *cp = m_mktemp2(drft, invo_name, NULL, NULL);
++            if (cp == NULL) {
++                adios (""sendsbr"", ""unable to create temporary file"");
++            }
++	    if (rename (drft, strncpy(file, cp, sizeof(file))) == NOTOK)
+ 		adios (file, ""unable to rename %s to"", drft);
+ 	    drft = file;
+ 	}
+@@ -253,8 +256,12 @@ attach(char *attachment_header_field_name, char *draft_file_name,
+      *	Make names for the temporary files.
+      */
+ 
+-    (void)strncpy(body_file_name, m_scratch("""", m_maildir(invo_name)), sizeof (body_file_name));
+-    (void)strncpy(composition_file_name, m_scratch("""", m_maildir(invo_name)), sizeof (composition_file_name));
++    (void)strncpy(body_file_name,
++                  m_mktemp(m_maildir(invo_name), NULL, NULL),
++                  sizeof (body_file_name));
++    (void)strncpy(composition_file_name,
++                  m_mktemp(m_maildir(invo_name), NULL, NULL),
++                  sizeof (composition_file_name));
+ 
+     if (has_body)
+ 	body_file = fopen(body_file_name, ""w"");
+@@ -676,9 +683,11 @@ splitmsg (char **vec, int vecp, char *drft, struct stat *st, int delay)
+ 	char tmpdrf[BUFSIZ];
+ 	FILE *out;
+ 
+-	strncpy (tmpdrf, m_scratch (drft, invo_name), sizeof(tmpdrf));
+-	if ((out = fopen (tmpdrf, ""w"")) == NULL)
+-	    adios (tmpdrf, ""unable to open for writing"");
++	char *cp = m_mktemp2(drft, invo_name, NULL, &out);
++        if (cp == NULL) {
++	    adios (drft, ""unable to create temporary file for"");
++        }
++	strncpy(tmpdrf, cp, sizeof(tmpdrf));
+ 	chmod (tmpdrf, 0600);
+ 
+ 	/*
+@@ -919,16 +928,17 @@ static int
+ tmp_fd (void)
+ {
+     int fd;
+-    char tmpfil[BUFSIZ];
++    char *tfile = NULL;
++
++    tfile = m_mktemp2(NULL, invo_name, &fd, NULL);
++    if (tfile == NULL) return NOTOK;
++    fchmod(fd, 0600);
+ 
+-    strncpy (tmpfil, m_tmpfil (invo_name), sizeof(tmpfil));
+-    if ((fd = open (tmpfil, O_RDWR | O_CREAT | O_TRUNC, 0600)) == NOTOK)
+-	return NOTOK;
+     if (debugsw)
+-	advise (NULL, ""temporary file %s selected"", tmpfil);
++	advise (NULL, ""temporary file %s selected"", tfile);
+     else
+-	if (unlink (tmpfil) == NOTOK)
+-	    advise (tmpfil, ""unable to remove"");
++	if (unlink (tfile) == NOTOK)
++	    advise (tfile, ""unable to remove"");
+ 
+     return fd;
+ }
+diff --git a/uip/show.c b/uip/show.c
+index e783a797..604f2ead 100644
+--- a/uip/show.c
++++ b/uip/show.c
+@@ -71,7 +71,7 @@ main (int argc, char **argv)
+     char *cp, *maildir, *file = NULL, *folder = NULL, *proc;
+     char buf[BUFSIZ], **argp, **arguments;
+     char *msgs[MAXARGS], *vec[MAXARGS];
+-    struct msgs *mp;
++    struct msgs *mp = NULL;
+ 
+ #ifdef LOCALE
+     setlocale(LC_ALL, """");
+diff --git a/uip/slocal.c b/uip/slocal.c
+index 4a8875e7..f24228af 100644
+--- a/uip/slocal.c
++++ b/uip/slocal.c
+@@ -1274,12 +1274,12 @@ copy_message (int qd, char *tmpfil, int fold)
+     int i, first = 1, fd1, fd2;
+     char buffer[BUFSIZ];
+     FILE *qfp, *ffp;
++    char *tfile = NULL;
+ 
+-    strcpy (tmpfil, m_tmpfil (invo_name));
+-
+-    /* open temporary file to put message in */
+-    if ((fd1 = open (tmpfil, O_RDWR | O_CREAT | O_TRUNC, 0600)) == -1)
+-	return -1;
++    tfile = m_mktemp2(NULL, invo_name, &fd1, NULL);
++    if (tfile == NULL) return -1;
++    fchmod(fd1, 0600);
++    strncpy (tmpfil, tfile, BUFSIZ);
+ 
+     if (!fold) {
+ 	while ((i = read (qd, buffer, sizeof(buffer))) > 0)
+diff --git a/uip/viamail.c b/uip/viamail.c
+index 04a76d2f..5b67ba15 100644
+--- a/uip/viamail.c
++++ b/uip/viamail.c
+@@ -181,13 +181,14 @@ via_mail (char *mailsw, char *subjsw, char *parmsw, char *descsw,
+     char *vec[MAXARGS];
+     struct stat st;
+     FILE *fp;
++    char *tfile = NULL;
+ 
+     umask (~m_gmprot ());
+ 
+-    strncpy (tmpfil, m_tmpfil (invo_name), sizeof(tmpfil));
+-    if ((fp = fopen (tmpfil, ""w+"")) == NULL)
+-	adios (tmpfil, ""unable to open for writing"");
+-    chmod (tmpfil, 0600);
++    tfile = m_mktemp2(NULL, invo_name, NULL, &fp);
++    if (tfile == NULL) adios(""viamail"", ""unable to create temporary file"");
++    chmod(tfile, 0600);
++    strncpy (tmpfil, tfile, sizeof(tmpfil));
+ 
+     if (!strchr(mailsw, '@'))
+ 	mailsw = concat (mailsw, ""@"", LocalName (), NULL);
+diff --git a/uip/whatnowsbr.c b/uip/whatnowsbr.c
+index 5fcba33c..da2debde 100644
+--- a/uip/whatnowsbr.c
++++ b/uip/whatnowsbr.c
+@@ -634,7 +634,7 @@ editfile (char **ed, char **arg, char *file, int use, struct msgs *mp,
+     struct stat st;
+ 
+ #ifdef HAVE_LSTAT
+-    int	slinked;
++    int	slinked = 0;
+ #if 0
+     int oumask;	/* PJS: for setting permissions on symlinks. */
+ #endif
+@@ -1315,7 +1315,7 @@ sendit (char *sp, char **arg, char *file, int pushed)
+ #endif /* not lint */
+ 	    && altmsg) {
+ 	vec[vecp++] = ""-dist"";
+-	distfile = getcpy (m_scratch (altmsg, invo_name));
++	distfile = getcpy (m_mktemp2(altmsg, invo_name, NULL, NULL));
+ 	if (link (altmsg, distfile) == NOTOK)
+ 	    adios (distfile, ""unable to link %s to"", altmsg);
+     } else {"

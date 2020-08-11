@@ -1,0 +1,14 @@
+message,commit_id,parent_commit,date,committer,diff
+"prevent double free of 'ce->cd_file' or later use of invalid data
+",028324109b0e90a18d0b38c6c45a603a6c8732b5,19b47ea980a98d01112d4bda1d220c7057818ff1,2003-06-27 17:02:13+00:00,Glenn Burkhardt,"diff --git a/uip/mhfree.c b/uip/mhfree.c
+index 57518015..c43c5e92 100644
+--- a/uip/mhfree.c
++++ b/uip/mhfree.c
+@@ -271,6 +271,7 @@ free_encoding (CT ct, int toplevel)
+ 	if (ce->ce_unlink)
+ 	    unlink (ce->ce_file);
+ 	free (ce->ce_file);
++	ce->ce_file = NULL;
+     }
+ 
+     if (toplevel) {"

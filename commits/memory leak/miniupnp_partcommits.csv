@@ -1,0 +1,102 @@
+message,commit_id,parent_commit,date,committer,diff
+"upnpsoap.c: fix 2 memory leaks in GetListOfPortMappings()
+",dce91afe3cedb4e30cfd822b7c274ec229d289df,49f38310fa6bf07999bf4fa516bcbc69b52e55e6,2013-02-06 15:03:25+01:00,Thomas Bernard,"diff --git a/miniupnpd/Changelog.txt b/miniupnpd/Changelog.txt
+index 9288d74..1378342 100644
+--- a/miniupnpd/Changelog.txt
++++ b/miniupnpd/Changelog.txt
+@@ -1,4 +1,7 @@
+-$Id: Changelog.txt,v 1.322 2013/01/29 21:52:44 nanard Exp $
++$Id: Changelog.txt,v 1.325 2013/02/06 13:14:50 nanard Exp $
++
++2013/02/06:
++  fix 2 potential memory leaks in GetListOfPortMappings()
+ 
+ 2013/01/29:
+   upnphttp.c: Fix and comment the findendheaders() function
+diff --git a/miniupnpd/upnpsoap.c b/miniupnpd/upnpsoap.c
+index a12539c..0157f72 100644
+--- a/miniupnpd/upnpsoap.c
++++ b/miniupnpd/upnpsoap.c
+@@ -1,4 +1,4 @@
+-/* $Id: upnpsoap.c,v 1.113 2012/10/04 22:10:26 nanard Exp $ */
++/* $Id: upnpsoap.c,v 1.114 2013/02/06 12:40:25 nanard Exp $ */
+ /* MiniUPnP project
+  * http://miniupnp.free.fr/ or http://miniupnp.tuxfamily.org/
+  * (c) 2006-2012 Thomas Bernard
+@@ -952,6 +952,7 @@ http://www.upnp.org/schemas/gw/WANIPConnection-v2.xsd"">
+ 	if(bodylen < 0)
+ 	{
+ 		SoapError(h, 501, ""ActionFailed"");
++		free(body);
+ 		return;
+ 	}
+ 	memcpy(body+bodylen, list_start, sizeof(list_start));
+@@ -965,12 +966,14 @@ http://www.upnp.org/schemas/gw/WANIPConnection-v2.xsd"">
+ 		/* have a margin of 1024 bytes to store the new entry */
+ 		if((unsigned int)bodylen + 1024 > bodyalloc)
+ 		{
++			char * body_sav = body;
+ 			bodyalloc += 4096;
+ 			body = realloc(body, bodyalloc);
+ 			if(!body)
+ 			{
+ 				ClearNameValueList(&data);
+ 				SoapError(h, 501, ""ActionFailed"");
++				free(body_sav);
+ 				free(port_list);
+ 				return;
+ 			}"
+"Fix memory leaks
+",ba753120dfc4444beca540f40720687f68422fc1,1df576c72ed4775de3c2875a8ca8182ef47e1a1f,2015-04-28 08:44:13+02:00,Daniel Winzen,"diff --git a/miniupnpc-async/miniupnpc-async.c b/miniupnpc-async/miniupnpc-async.c
+index c3e70c3..ad16ade 100644
+--- a/miniupnpc-async/miniupnpc-async.c
++++ b/miniupnpc-async/miniupnpc-async.c
+@@ -703,6 +703,7 @@ static int upnpc_build_soap_request(upnpc_t * p, const char * url,
+ 	body = malloc(body_len + 1);
+ 	if(body == NULL) {
+ 		p->state = EError;
++		free(args_xml);
+ 		return -1;
+ 	}
+ 	if(snprintf(body, body_len + 1, fmt_soap, action, service, args_xml?args_xml:"""", action) != body_len) {
+@@ -712,6 +713,7 @@ static int upnpc_build_soap_request(upnpc_t * p, const char * url,
+ 	args_xml = NULL;
+ 	if(!parseURL(url, hostname, &port, &path, &scope_id)) {
+ 		p->state = EError;
++		free(body);
+ 		return -1;
+ 	}
+ 	if(port != 80)
+diff --git a/miniupnpc-libevent/miniupnpc-libevent.c b/miniupnpc-libevent/miniupnpc-libevent.c
+index bb50682..3d1e262 100644
+--- a/miniupnpc-libevent/miniupnpc-libevent.c
++++ b/miniupnpc-libevent/miniupnpc-libevent.c
+@@ -614,6 +614,7 @@ static int upnpc_send_soap_request(upnpc_device_t * p, const char * url,
+ 	body_len = snprintf(NULL, 0, fmt_soap, method, service, args_xml?args_xml:"""", method);
+ 	body = malloc(body_len + 1);
+ 	if(body == NULL) {
++		free(args_xml);
+ 		return -1;
+ 	}
+ 	if(snprintf(body, body_len + 1, fmt_soap, method, service, args_xml?args_xml:"""", method) != body_len) {
+@@ -622,6 +623,7 @@ static int upnpc_send_soap_request(upnpc_device_t * p, const char * url,
+ 	free(args_xml);
+ 	args_xml = NULL;
+ 	if(!parseURL(url, hostname, &port, &path, &scope_id)) {
++		free(body);
+ 		return -1;
+ 	}
+ 	if(port != 80)"
+"Fix memory leak
+",7e088a903931d0de46072f2871ceb0dee9c67a4c,6400a13a50c06bfc3fad4e9ebb357d0dfc9645ed,2015-06-24 13:14:14+08:00,Chocobo1,"diff --git a/miniupnpd/upnpsoap.c b/miniupnpd/upnpsoap.c
+index 1cf6c62..d833f56 100644
+--- a/miniupnpd/upnpsoap.c
++++ b/miniupnpd/upnpsoap.c
+@@ -815,6 +815,7 @@ DeletePortMappingRange(struct upnphttp * h, const char * action)
+ 	{
+ 		SoapError(h, 730, ""PortMappingNotFound"");
+ 		ClearNameValueList(&data);
++		free(port_list);
+ 		return;
+ 	}
+ "

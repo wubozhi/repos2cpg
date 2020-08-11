@@ -1,0 +1,28 @@
+message,commit_id,parent_commit,date,committer,diff
+"Fix memory leak when an error occurs encoding dict items
+",e8c7018ba06ef6a5709b6242684bd06d9964904e,54d5ff15d508c51366986cc4f77f2f287f036582,2014-10-23 21:59:08-07:00,Keith Bussell,"diff --git a/simplejson/_speedups.c b/simplejson/_speedups.c
+index 01614c4..0b2d81c 100644
+--- a/simplejson/_speedups.c
++++ b/simplejson/_speedups.c
+@@ -3070,6 +3070,7 @@ encoder_listencode_dict(PyEncoderObject *s, JSON_Accu *rval, PyObject *dct, Py_s
+ bail:
+     Py_XDECREF(encoded);
+     Py_XDECREF(items);
++    Py_XDECREF(item);
+     Py_XDECREF(iter);
+     Py_XDECREF(kstr);
+     Py_XDECREF(ident);"
+"Merge pull request #110 from kbussell/memoryleak
+
+Fix memory leak when an error occurs encoding dict items, fixes #109",99d3082b8edef1e6b43e2a3971e7cebf2cde6608,54d5ff15d508c51366986cc4f77f2f287f036582,2014-10-24 08:12:31-07:00,Bob Ippolito,"diff --git a/simplejson/_speedups.c b/simplejson/_speedups.c
+index 01614c4..0b2d81c 100644
+--- a/simplejson/_speedups.c
++++ b/simplejson/_speedups.c
+@@ -3070,6 +3070,7 @@ encoder_listencode_dict(PyEncoderObject *s, JSON_Accu *rval, PyObject *dct, Py_s
+ bail:
+     Py_XDECREF(encoded);
+     Py_XDECREF(items);
++    Py_XDECREF(item);
+     Py_XDECREF(iter);
+     Py_XDECREF(kstr);
+     Py_XDECREF(ident);"

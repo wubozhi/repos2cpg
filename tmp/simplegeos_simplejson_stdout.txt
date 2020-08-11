@@ -1,0 +1,51 @@
+Py_TYPE	tmp/_speedups.c	4;"	d	line:4	file:	end:4
+Py_ssize_t	tmp/_speedups.c	7;"	t	line:7	file:
+PY_SSIZE_T_MAX	tmp/_speedups.c	8;"	d	line:8	file:	end:8
+PY_SSIZE_T_MIN	tmp/_speedups.c	9;"	d	line:9	file:	end:9
+PyInt_FromSsize_t	tmp/_speedups.c	10;"	d	line:10	file:	end:10
+PyInt_AsSsize_t	tmp/_speedups.c	11;"	d	line:11	file:	end:11
+UNUSED	tmp/_speedups.c	15;"	d	line:15	file:	end:15
+UNUSED	tmp/_speedups.c	17;"	d	line:17	file:	end:17
+DEFAULT_ENCODING	tmp/_speedups.c	20;"	d	line:20	file:	end:20
+PyScanner_Check	tmp/_speedups.c	22;"	d	line:22	file:	end:22
+PyScanner_CheckExact	tmp/_speedups.c	23;"	d	line:23	file:	end:23
+PyScannerType	tmp/_speedups.c	25;"	v	line:25	file:
+_PyScannerObject	tmp/_speedups.c	27;"	s	line:27	file:	end:35
+encoding	tmp/_speedups.c	29;"	m	line:29	struct:_PyScannerObject	file:
+strict	tmp/_speedups.c	30;"	m	line:30	struct:_PyScannerObject	file:
+object_hook	tmp/_speedups.c	31;"	m	line:31	struct:_PyScannerObject	file:
+parse_float	tmp/_speedups.c	32;"	m	line:32	struct:_PyScannerObject	file:
+parse_int	tmp/_speedups.c	33;"	m	line:33	struct:_PyScannerObject	file:
+parse_constant	tmp/_speedups.c	34;"	m	line:34	struct:_PyScannerObject	file:
+PyScannerObject	tmp/_speedups.c	35;"	t	line:35	file:
+scanner_members	tmp/_speedups.c	37;"	v	line:37	file:
+S_CHAR	tmp/_speedups.c	63;"	d	line:63	file:	end:63
+IS_WHITESPACE	tmp/_speedups.c	64;"	d	line:64	file:	end:64
+MIN_EXPANSION	tmp/_speedups.c	66;"	d	line:66	file:	end:66
+MAX_EXPANSION	tmp/_speedups.c	68;"	d	line:68	file:	end:68
+MAX_EXPANSION	tmp/_speedups.c	70;"	d	line:70	file:	end:70
+ascii_escape_char	tmp/_speedups.c	75;"	f	line:75	file:	end:117
+ascii_escape_unicode	tmp/_speedups.c	120;"	f	line:120	file:	end:167
+ascii_escape_str	tmp/_speedups.c	170;"	f	line:170	file:	end:229
+raise_errmsg	tmp/_speedups.c	232;"	f	line:232	end:250
+join_list_string	tmp/_speedups.c	253;"	f	line:253	file:	end:265
+_build_rval_index_tuple	tmp/_speedups.c	268;"	f	line:268	file:	end:285
+scanstring_str	tmp/_speedups.c	288;"	f	line:288	file:	end:472
+scanstring_unicode	tmp/_speedups.c	476;"	f	line:476	file:	end:633
+py_scanstring	tmp/_speedups.c	642;"	f	line:642	file:	end:673
+py_encode_basestring_ascii	tmp/_speedups.c	682;"	f	line:682	file:	end:697
+scanner_dealloc	tmp/_speedups.c	700;"	f	line:700	file:	end:717
+_parse_object_str	tmp/_speedups.c	720;"	f	line:720	file:	end:803
+_parse_object_unicode	tmp/_speedups.c	806;"	f	line:806	file:	end:889
+_parse_array_str	tmp/_speedups.c	892;"	f	line:892	file:	end:946
+_parse_array_unicode	tmp/_speedups.c	949;"	f	line:949	file:	end:1003
+_parse_constant	tmp/_speedups.c	1006;"	f	line:1006	file:	end:1018
+_match_number_str	tmp/_speedups.c	1021;"	f	line:1021	file:	end:1105
+_match_number_unicode	tmp/_speedups.c	1108;"	f	line:1108	file:	end:1185
+scan_once_str	tmp/_speedups.c	1188;"	f	line:1188	file:	end:1254
+scan_once_unicode	tmp/_speedups.c	1257;"	f	line:1257	file:	end:1322
+scanner_call	tmp/_speedups.c	1325;"	f	line:1325	file:	end:1350
+scanner_init	tmp/_speedups.c	1353;"	f	line:1353	file:	end:1412
+PyScannerType	tmp/_speedups.c	1417;"	v	line:1417	file:
+speedups_methods	tmp/_speedups.c	1460;"	v	line:1460	file:
+init_speedups	tmp/_speedups.c	1476;"	f	line:1476	end:1484

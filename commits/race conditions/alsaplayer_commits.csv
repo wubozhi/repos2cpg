@@ -1,0 +1,450 @@
+message,commit_id,parent_commit,date,committer,diff
+"added new command AP_ADD_PLAYLIST
+This reduces client/server roundtrips significantly when adding playlist
+items, compared to many AP_ADD_PATH calls
+Also, this greatly reduces the ""chance"" to trigger race conditions in
+adding playlist items
+
+",5c2fa8ded83cb6720dec72c2561577e966442655,634f53573f780694efc1c9136c54a04054bcc8b1,2002-09-04 19:47:19+00:00,fbaumgart,"diff --git a/alsaplayer/alsaplayer/control.h b/alsaplayer/alsaplayer/control.h
+index 8ae80d7..dba6385 100644
+--- a/alsaplayer/alsaplayer/control.h
++++ b/alsaplayer/alsaplayer/control.h
+@@ -49,6 +49,7 @@ int ap_quit(int session);
+ int ap_clear_playlist(int session);
+ int ap_add_path(int session, const char *path);
+ int ap_add_and_play(int session, const char *path);
++int ap_add_playlist(int session, const char *playlistfile);
+ 
+ int ap_set_speed(int session, float speed);
+ int ap_get_speed(int session, float *val);
+diff --git a/alsaplayer/app/ControlSocket.cpp b/alsaplayer/app/ControlSocket.cpp
+index fbb0ab5..6386b42 100644
+--- a/alsaplayer/app/ControlSocket.cpp
++++ b/alsaplayer/app/ControlSocket.cpp
+@@ -158,6 +158,35 @@ void socket_looper(void *arg)
+ 				}	
+ 				ap_message_add_int32(reply, ""ack"", 1);
+ 				break;
++			case AP_ADD_PLAYLIST:
++				if ((path = ap_message_find_string(msg, ""path1""))) {
++					FILE *f;
++					alsaplayer_error(""adding playlist: %s\n"", path);
++
++					if ((f = fopen(path, ""r"")) != NULL)
++					{
++						char entry[PATH_MAX];
++						while (fgets(entry, sizeof(entry), f))
++						{
++							char *p;
++
++							if (*entry == '#')
++								continue;
++							if ((p = strchr(entry, '\n')) != NULL)
++								*p = 0;
++
++							alsaplayer_error(""adding entry: %s\n"", entry);
++
++							if (!*entry)
++								continue;
++
++							playlist->Insert(entry, playlist->Length());
++						}
++						fclose(f);
++					}
++				}	
++				ap_message_add_int32(reply, ""ack"", 1);
++				break;
+ 			case AP_PLAY: 
+ 				if (player) {
+ 					if (player->IsPlaying()) {
+diff --git a/alsaplayer/libalsaplayer/message.c b/alsaplayer/libalsaplayer/message.c
+index c94b6ad..d03924e 100644
+--- a/alsaplayer/libalsaplayer/message.c
++++ b/alsaplayer/libalsaplayer/message.c
+@@ -786,6 +786,37 @@ int ap_add_path(int session, const char *path)
+ 	return 0;
+ }
+ 
++
++int ap_add_playlist(int session, const char *playlistfile)
++{
++	int fd;
++	int32_t *result, ret_val;
++	ap_message_t *msg, *reply;
++
++	fd = ap_connect_session(session);
++	if (fd < 0)
++		return 0;
++	msg = ap_message_new();
++	msg->header.cmd = AP_ADD_PLAYLIST;
++	ap_message_add_string(msg, ""path1"", playlistfile);
++	ap_message_send(fd, msg);
++	ap_message_delete(msg);
++	msg = NULL;
++
++	reply = ap_message_receive(fd);
++	close(fd);
++
++	if ((result = ap_message_find_int32(reply, ""ack""))) {
++		ret_val = *result;
++		ap_message_delete(reply);
++		return 1;
++	}
++	printf(""ap_add_playlist() failed for some reason\n"");
++	ap_message_delete(reply);
++	return 0;
++}
++
++
+ int ap_sort (int session, char *seq)
+ {
+ 	int fd;
+diff --git a/alsaplayer/libalsaplayer/message.h b/alsaplayer/libalsaplayer/message.h
+index 7ea303e..ab62424 100644
+--- a/alsaplayer/libalsaplayer/message.h
++++ b/alsaplayer/libalsaplayer/message.h
+@@ -22,7 +22,7 @@
+ #include <sys/types.h>
+ 
+ #define AP_CONTROL_BASE_VERSION 0x1000
+-#define AP_CONTROL_VERSION      (AP_CONTROL_BASE_VERSION + 4)
++#define AP_CONTROL_VERSION      (AP_CONTROL_BASE_VERSION + 5)
+ 
+ #define KEYID_LEN	32
+ 
+@@ -68,6 +68,7 @@
+ #define AP_GET_PAN		0xcc23
+ #define AP_SORT			0xcc24
+ #define AP_GET_FILE_PATH	0xcc25
++#define AP_ADD_PLAYLIST		0xcc26
+ /* Add new commands here */
+ 
+ #ifdef __cplusplus"
+"insertion of playlist items is done synchronous instead of in a separate
+thread. This eliminates the frequent crashes due to race conditions.
+As a cost, there might be an occasional audio dropout (seldom).
+I consider this behaviour to be much better than crashing.
+
+increased readabiliy of sort_comparator
+
+minor spelling fixes
+
+",0386a709beb31d64ca741d035036f59c16940d96,5c2fa8ded83cb6720dec72c2561577e966442655,2002-09-04 19:52:19+00:00,fbaumgart,"diff --git a/alsaplayer/app/Playlist.cpp b/alsaplayer/app/Playlist.cpp
+index 0c50eb7..8071f24 100644
+--- a/alsaplayer/app/Playlist.cpp
++++ b/alsaplayer/app/Playlist.cpp
+@@ -65,145 +65,98 @@ static void additems(std::vector<std::string> *items, std::string path, int dept
+ //	P - sort by playtime in ascending direction.
+ static const char *sort_seq;
+ 
++#define DESCENDING	0
++#define ASCENDING	1
++#define COMPARE(what,direction)	{ int rc = a.##what##.compare(b.##what##); \
++                                  if (rc == 0)  continue; \
++                                  return (direction == DESCENDING) ? rc > 0 : rc < 0; }
++
+ // Function is similar to strcmp, but this is for PlayItem type.
+ // This function uses sort_seq variable. Also this function should 
+ // be keept optimized for speed.
+ static int sort_comparator (const PlayItem &a, const PlayItem &b) {
+-    int rc;
+-    
++    int ai, bi;
++
+     // For each kind of sorting field
+     for (const char *t = sort_seq; *t; t++) {
+-	if (*t == 't') {
+-	    // Compare titles with descending
+-	    
+-	    rc = a.title.compare (b.title);
+-	    if (rc == 0)  continue;
+-
+-	    return rc > 0;
+-	} else if (*t == 'T') {
+-	    // Compare titles with ascending
+-	    
+-	    rc = a.title.compare (b.title);
+-	    if (rc == 0)  continue;
+-
+-	    return rc < 0;
+-	} else if (*t == 'a') {
+-	    // Compare artists with descending
+-	    
+-	    rc = a.artist.compare (b.artist);
+-	    if (rc == 0)  continue;
+-
+-	    return rc > 0;
+-	} else if (*t == 'A') {
+-	    // Compare artists with ascending
+-	    
+-	    rc = a.artist.compare (b.artist);
+-	    if (rc == 0)  continue;
+-
+-	    return rc < 0;
+-	} else if (*t == 'l') {
+-	    // Compare albums with descending
+-	    
+-	    rc = a.album.compare (b.album);
+-	    if (rc == 0)  continue;
+-
+-	    return rc > 0;
+-	} else if (*t == 'L') {
+-	    // Compare albums with ascending
+-	    
+-	    rc = a.album.compare (b.album);
+-	    if (rc == 0)  continue;
+-
+-	    return rc < 0;
+-	} else if (*t == 'y') {
+-	    // Compare years with descending
+-	    
+-	    int ai = atoi (a.year.c_str ());
+-	    int bi = atoi (b.year.c_str ());
+-	    
+-	    if (ai == bi)  continue;
+-
+-	    return ai > bi;
+-	} else if (*t == 'Y') {
+-	    // Compare years with ascending
+-	    int ai = atoi (a.year.c_str ());
+-	    int bi = atoi (b.year.c_str ());
+-	    
+-	    if (ai == bi)  continue;
+-
+-	    return ai < bi;
+-	} else if (*t == 'n') {
+-	    // Compare tracks with descending
+-	    
+-	    int ai = atoi (a.track.c_str ());
+-	    int bi = atoi (b.track.c_str ());
+-	    
+-	    if (ai == bi)  continue;
+-
+-	    return ai > bi;
+-	} else if (*t == 'N') {
+-	    // Compare tracks with ascending
+-	    
+-	    int ai = atoi (a.track.c_str ());
+-	    int bi = atoi (b.track.c_str ());
+-	    
+-	    if (ai == bi)  continue;
+-
+-	    return ai < bi;
+-	} else if (*t == 'g') {
+-	    // Compare genres with descending
+-	    
+-	    rc = a.genre.compare (b.genre);
+-	    if (rc == 0)  continue;
+-
+-	    return rc > 0;
+-	} else if (*t == 'G') {
+-	    // Compare genres with ascending
+-	    
+-	    rc = a.genre.compare (b.genre);
+-	    if (rc == 0)  continue;
+-
+-	    return rc < 0;
+-	} else if (*t == 'f') {
+-	    // Compare filenames with descending
+-	    
+-	    rc = a.filename.compare (b.filename);
+-	    if (rc == 0)  continue;
+-
+-	    return rc > 0;
+-	} else if (*t == 'F') {
+-	    // Compare filenames with ascending
+-	    
+-	    rc = a.filename.compare (b.filename);
+-	    if (rc == 0)  continue;
+-
+-	    return rc < 0;
+-	} else if (*t == 'c') {
+-	    // Compare comments with descending
+-	    
+-	    rc = a.comment.compare (b.comment);
+-	    if (rc == 0)  continue;
+-
+-	    return rc > 0;
+-	} else if (*t == 'C') {
+-	    // Compare comments with ascending
+-	    
+-	    rc = a.comment.compare (b.comment);
+-	    if (rc == 0)  continue;
+-
+-	    return rc < 0;
+-	} else if (*t == 'p') {
+-	    // Compare playtimes with descending
+-	    
+-	    if (a.playtime == b.playtime)  continue;
+-
+-	    return a.playtime > b.playtime;
+-	} else if (*t == 'P') {
+-	    // Compare playtimes with ascending
+-	    
+-	    if (a.playtime == b.playtime)  continue;
+-
+-	    return a.playtime < b.playtime;
++	switch (*t) {
++		case 't':	// Compare titles, descending
++				COMPARE(title, DESCENDING);
++
++		case 'T':	// Compare titles, ascending
++				COMPARE(title, ASCENDING);
++
++		case 'a':	// Compare artists, descending
++				COMPARE(artist, DESCENDING);
++
++		case 'A':	// Compare artists, ascending
++				COMPARE(artist, ASCENDING);
++
++		case 'l':	// Compare albums, descending
++				COMPARE(album, DESCENDING);
++
++		case 'L':	// Compare albums, ascending
++				COMPARE(album, ASCENDING);
++
++		case 'g':	// Compare genres, descending
++				COMPARE(genre, DESCENDING);
++
++		case 'G':	// Compare genres, ascending
++				COMPARE(genre, ASCENDING);
++
++		case 'f':	// Compare filenames, descending
++				COMPARE(filename, DESCENDING);
++
++		case 'F':	// Compare filenames, ascending
++				COMPARE(filename, ASCENDING);
++
++		case 'c':	// Compare comments, descending
++				COMPARE(comment, DESCENDING);
++
++		case 'C':	// Compare comments, ascending
++				COMPARE(comment, ASCENDING);
++
++		case 'y':	// Compare years, descending		
++				ai = atoi (a.year.c_str ());
++				bi = atoi (b.year.c_str ());
++
++				if (ai == bi)  continue;
++
++				return ai > bi;
++
++		case 'Y':	// Compare years, ascending
++				ai = atoi (a.year.c_str ());
++				bi = atoi (b.year.c_str ());
++
++				if (ai == bi)  continue;
++
++				return ai < bi;
++
++		case 'n':	// Compare tracks, descending
++				ai = atoi (a.track.c_str ());
++				bi = atoi (b.track.c_str ());
++
++				if (ai == bi)  continue;
++
++				return ai > bi;
++
++		case 'N':	// Compare tracks, ascending
++				ai = atoi (a.track.c_str ());
++				bi = atoi (b.track.c_str ());
++
++				if (ai == bi)  continue;
++
++				return ai < bi;
++
++		case 'p':	// Compare playtimes, descending
++				if (a.playtime == b.playtime)  continue;
++
++				return a.playtime > b.playtime;
++
++		case 'P':	// Compare playtimes, ascending
++				if (a.playtime == b.playtime)  continue;
++
++				return a.playtime < b.playtime;
+ 	}
+     }
+ 
+@@ -362,10 +315,10 @@ void insert_looper(void *data) {
+ 	}
+ 	std::vector<PlayItem> newitems;
+ 	if(vetted_items.size() > 0) {
+-		char cwd[512];
++		char cwd[PATH_MAX + 1];
+ 		std::vector<std::string>::const_iterator path;
+ 
+-		if (!getcwd(cwd, 511)) {
++		if (!getcwd(cwd, PATH_MAX)) {
+ 			alsaplayer_error(""Failed to get current working directory"");
+ 			cwd[0] = 0;
+ 		}	
+@@ -415,7 +368,10 @@ void insert_looper(void *data) {
+ 	if (playlist->active)
+ 		info_looper(playlist);
+ 
++#if 0
++	// do NOT work as a thread anymore due to race conditions
+ 	pthread_exit(NULL);
++#endif
+ }
+ 
+ 
+@@ -535,7 +491,7 @@ void Playlist::Next() {
+ 	    }
+ 	  } else if (curritem == queue.size()){
+ 	    if (LoopingPlaylist()){
+-	      curritem -= (curritem - 1);
++	      curritem = 1;
+ 	      PlayFile(queue[curritem -1]); 
+ 	    }
+ 	  }
+@@ -625,10 +581,15 @@ void Playlist::Insert(std::vector<std::string> const & paths, unsigned position,
+ 	// a) block the user interface
+ 	// b) risk getting caught in a deadlock when we call the interface to
+ 	//    inform it of the change
++// FIXME: race conditions ahead!
++#if 0
+ 	pthread_create(&adder, NULL,
+ 				   (void * (*)(void *))insert_looper, (void *)items);
+ 	if (wait_for_insert)
+ 		pthread_join(adder, NULL);
++#else
++	insert_looper(items);
++#endif
+ }
+ 
+ // Add some items start them playing
+@@ -993,7 +954,6 @@ void Playlist::Stop() {
+ 	Pause();
+ 	player1->Stop(); 
+ 	player2->Stop();
+-	
+ }
+ 
+ bool Playlist::PlayFile(PlayItem const & item) {
+@@ -1030,7 +990,7 @@ void Playlist::Sort (std::string const &seq) {
+ 	// We will use global sort_seq variable, so lock it
+ 	pthread_mutex_lock(&playlist_sort_seq_mutex);
+ 	
+-	// Let the sort_comparator function to know seq value
++	// Let the sort_comparator function know seq value
+ 	sort_seq = seq.c_str ();
+ 
+ 	// Mark curritem
+@@ -1039,7 +999,7 @@ void Playlist::Sort (std::string const &seq) {
+ 	// Sort
+ 	sort (queue.begin(), queue.end(), sort_comparator);
+ 
+-	// Lets other playlists use sort_seq variable
++	// Let other playlists use sort_seq variable
+ 	pthread_mutex_unlock(&playlist_sort_seq_mutex);
+ 
+ 	// Search new location of the playing song
+@@ -1064,7 +1024,6 @@ void Playlist::Sort (std::string const &seq) {
+ 			(*j)->cbinsert((*j)->data, queue, 0);
+ 			(*j)->cbsetcurrent((*j)->data, curritem);
+ 		}
+-
+ 	}
+ 
+ 	Unlock();"

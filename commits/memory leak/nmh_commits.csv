@@ -1,0 +1,236 @@
+message,commit_id,parent_commit,date,committer,diff
+"* Changed configure.in to use gcc -Wall even without --enable-debug, to prevent
+  developers compiling optimized from introducing warnings, and to give
+  end-users a warm, fuzzy feeling as they (hopefully) see no warnings come out
+  (except perhaps on the lex output file) even with -Wall.
+
+* Renamed getpass() to nmh_getpass() since the prototype for getpass() varies
+  from OS to OS, and we want to _always_ use our version of the function.  Fixed
+  all the callers to use nmh_getpass() and added it to prototypes.h.
+  Semi-arbitrarily upped MAX_PASSWORD_LEN from 128 to 256.  buf was being
+  calloc()'d and the memory leaked -- should have just been declared as static
+  char array.  Prepended ""Portions of this code are"" to the copyright message,
+  as this version has been changed significantly from the BSD version.
+
+* Added ""nmh-local functions to use in preference to OS versions"" section to
+  README.developers (currently just says to use nmh_getpass() instead of system
+  getpass()).
+",e0233d70fb7bfac996b3514ae60d7eedef0e6ad3,31d7959584363f09dbf599e09313f2916ba03b84,2000-05-09 21:44:15+00:00,Dan Harkless,"diff --git a/ChangeLog b/ChangeLog
+index d26f289f..5f2e3a28 100644
+--- a/ChangeLog
++++ b/ChangeLog
+@@ -1,4 +1,4 @@
+-Tue May 09 01:13:52 2000 Dan Harkless <dan-nmh@dilvish.speed.net>
++Tue May 09 14:38:32 2000 Dan Harkless <dan-nmh@dilvish.speed.net>
+ 
+ 	* Alphabetized Shantonu's $pop_kinds output on configure's ""pop is
+ 	enabled"" line.  If POP3 is the only kind of POP enabled, say so,
+@@ -12,6 +12,26 @@ Tue May 09 01:13:52 2000 Dan Harkless <dan-nmh@dilvish.speed.net>
+ 	* Added steps to README.developers saying to change the version
+ 	number to X.Y.Z+dev.  Did a little rearranging and changed the FTP
+ 	dir from /home/ftp to /var/ftp to reflect Doug's new machine.
++
++	* Changed configure.in to use gcc -Wall even without
++	--enable-debug, to prevent developers compiling optimized from
++	introducing warnings, and to give end-users a warm, fuzzy feeling
++	as they (hopefully) see no warnings come out (except perhaps on
++	the lex output file) even with -Wall.
++
++	* Renamed getpass() to nmh_getpass() since the prototype for
++ 	getpass() varies from OS to OS, and we want to _always_ use our
++ 	version of the function.  Fixed all the callers to use
++ 	nmh_getpass() and added it to prototypes.h.  Semi-arbitrarily
++ 	upped MAX_PASSWORD_LEN from 128 to 256.  buf was being calloc()'d
++ 	and the memory leaked -- should have just been declared as static
++ 	char array.  Prepended ""Portions of this code are"" to the
++ 	copyright message, as this version has been changed significantly
++ 	from the BSD version.
++
++	* Added ""nmh-local functions to use in preference to OS versions""
++	section to README.developers (currently just says to use
++	nmh_getpass() instead of system getpass()).
+ 	
+ Mon May 08 23:51:55 2000 Dan Harkless <dan-nmh@dilvish.speed.net>
+ 
+diff --git a/configure b/configure
+index ea958420..f61647d6 100755
+--- a/configure
++++ b/configure
+@@ -1063,7 +1063,7 @@ if test -n ""$auto_cflags""; then
+   else
+     test -z ""$LDFLAGS"" && LDFLAGS=-s
+     if test -n ""$GCC""; then
+-      test -z ""$CFLAGS"" && CFLAGS=-O2 || CFLAGS=""$CFLAGS -O2""
++      test -z ""$CFLAGS"" && CFLAGS=""-Wall -O2"" || CFLAGS=""$CFLAGS -Wall -O2""
+     else
+       test -z ""$CFLAGS"" && CFLAGS=-O  || CFLAGS=""$CFLAGS -O""
+     fi
+diff --git a/configure.in b/configure.in
+index 957b3dab..d68b624b 100644
+--- a/configure.in
++++ b/configure.in
+@@ -192,7 +192,7 @@ if test -n ""$auto_cflags""; then
+   else
+     test -z ""$LDFLAGS"" && LDFLAGS=-s
+     if test -n ""$GCC""; then
+-      test -z ""$CFLAGS"" && CFLAGS=-O2 || CFLAGS=""$CFLAGS -O2""
++      test -z ""$CFLAGS"" && CFLAGS=""-Wall -O2"" || CFLAGS=""$CFLAGS -Wall -O2""
+     else
+       test -z ""$CFLAGS"" && CFLAGS=-O  || CFLAGS=""$CFLAGS -O""
+     fi
+diff --git a/docs/README.developers b/docs/README.developers
+index b2c2efa0..9314563c 100644
+--- a/docs/README.developers
++++ b/docs/README.developers
+@@ -130,6 +130,21 @@ zotnet/tws/
+     ""time"".  Date and time manipulation routines go here.
+ 
+ 
++-------------------------------------------------------
++nmh-local functions to use in preference to OS versions
++-------------------------------------------------------
++
++For some system functions whose availability or behavior varies from OS to OS,
++nmh conditionally uses a local definition with the same name as the OS function
++(e.g. snprintf()).  For other functions, developers need to avoid the OS
++versions and always use the nmh-supplied function.  Here is a list of such
++functions: 
++
++OS function  nmh-local version to use instead
++===========  ================================
++getpass()    nmh_getpass()
++
++
+ -------------
+ releasing nmh
+ -------------
+diff --git a/h/prototypes.h b/h/prototypes.h
+index 4b5a0b8f..d252eada 100644
+--- a/h/prototypes.h
++++ b/h/prototypes.h
+@@ -81,6 +81,7 @@ char *m_scratch (char *, char *);
+ char *m_tmpfil (char *);
+ void m_unknown(FILE *);
+ int makedir (char *);
++char *nmh_getpass(const char *);
+ char *new_fs (char *, char *, char *);
+ char *path(char *, int);
+ int peekc(FILE *ib);
+diff --git a/sbr/getpass.c b/sbr/getpass.c
+index a8238fb2..b33a3f8e 100644
+--- a/sbr/getpass.c
++++ b/sbr/getpass.c
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 1988, 1993
++ * Portions of this code are Copyright (c) 1988, 1993
+  *	The Regents of the University of California.  All rights reserved.
+  *
+  * Redistribution and use in source and binary forms, with or without
+@@ -34,27 +34,27 @@
+  */
+ 
+ #include <stdio.h>
+-#include <stdlib.h>   /* for calloc() */
+ #include <termios.h>
+ #include <unistd.h>   /* for ttyname() */
+ #include ""h/mh.h""     /* for adios() */
+ 
+-#define PASSWORD_LEN 128
++/* We don't use MAX_PASS here because the maximum password length on a remote
++   POP daemon will have nothing to do with the length on our OS.  256 is
++   arbitrary but hopefully big enough to accomodate everyone. */
++#define MAX_PASSWORD_LEN 256
+ 
+ #ifndef TCSANOW
+ #define TCSANOW 0
+ #endif
+ 
+ char *
+-getpass(const char *prompt)
++nmh_getpass(const char *prompt)
+ {
+   struct termios oterm, term;
+   int ch;
+-  char *p, *ttystring, *buf;
++  char *p, *ttystring;
+   FILE *fout, *fin;
+-
+-  if(!(buf = (char *)calloc((size_t)(PASSWORD_LEN+1), sizeof(char))))
+-    adios(NULL, ""unable to allocate string storage"");
++  static char  buf[MAX_PASSWORD_LEN + 1];
+ 
+   /* Find if stdin is connect to a terminal. If so, read directly from
+    * the terminal, and turn off echo. Otherwise read from stdin.
+@@ -75,9 +75,10 @@ getpass(const char *prompt)
+       (void)tcsetattr(fileno(fin), TCSANOW, &term);
+     }
+ 
+-  for (p = buf; (ch = getc(fin)) != EOF && ch != '\n';)
+-    if (p < buf + PASSWORD_LEN)
+-      *p++ = ch;
++  for (p = buf; (ch = getc(fin)) != EOF &&
++                 ch != '\n' &&
++	         p < buf + MAX_PASSWORD_LEN;)
++    *p++ = ch;
+   *p = '\0';
+ 
+   if(ttystring != NULL) {
+@@ -86,5 +87,5 @@ getpass(const char *prompt)
+     (void)fputc('\n', fout);
+     (void)fclose(fin);
+   }
+-  return((char *)buf);
++  return buf;
+ }
+diff --git a/sbr/ruserpass.c b/sbr/ruserpass.c
+index 085d493a..6045c326 100644
+--- a/sbr/ruserpass.c
++++ b/sbr/ruserpass.c
+@@ -162,7 +162,7 @@ done:
+ 	char *mypass;
+ 
+ 	snprintf(prompt, sizeof(prompt), ""Password (%s:%s): "", host, *aname);
+-	mypass = (char *)getpass (prompt);
++	mypass = nmh_getpass(prompt);
+ 	
+ 	if (*mypass == '\0') {
+ 	    mypass = *aname;
+diff --git a/stamp-h.in b/stamp-h.in
+index ba1d8ed3..0158eaf7 100644
+--- a/stamp-h.in
++++ b/stamp-h.in
+@@ -1 +1 @@
+-Tue May  9 00:15:18 PDT 2000
++Tue May  9 13:12:44 PDT 2000
+diff --git a/zotnet/bboards/getbbent.c b/zotnet/bboards/getbbent.c
+index aa3253e0..c820d69f 100644
+--- a/zotnet/bboards/getbbent.c
++++ b/zotnet/bboards/getbbent.c
+@@ -513,7 +513,7 @@ ldrchk (struct bboard *b)
+ 	return 1;
+ 
+     if (strcmp (b->bb_passwd,
+-		crypt (getpass (""Password: ""), b->bb_passwd)) == 0)
++		crypt (nmh_getpass (""Password: ""), b->bb_passwd)) == 0)
+ 	return 1;
+ 
+     fprintf (stderr, ""Sorry\n"");"
+"Move freeaddrinfo() to inside of our loop; this prevents a memory leak
+and also prevents it from being called with a NULL pointer.
+",d6ed7408ae67cf31b31a8c42515a160f7dc6330a,7b98850d3b8b2453b473fdfb6db52f4aa3fe39b6,2009-01-16 15:48:09+00:00,Ken Hornstein,"diff --git a/sbr/client.c b/sbr/client.c
+index ae6968f7..732fb47f 100644
+--- a/sbr/client.c
++++ b/sbr/client.c
+@@ -111,9 +111,10 @@ client (char *args, char *service, char *response, int len_response, int debug)
+ 
+ 	    close(sd);
+ 	}
++
++    	freeaddrinfo(res);
+     }
+ 
+-    freeaddrinfo(res);
+     client_freelist(ap);
+     strncpy (response, ""no servers available"", len_response);
+     return NOTOK;"

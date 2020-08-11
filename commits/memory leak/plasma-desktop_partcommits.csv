@@ -1,0 +1,31 @@
+message,commit_id,parent_commit,date,committer,diff
+"Fix memory leak
+",63db8eb701ef9dcdef47a6a0347c824d2f02cf5d,132044dedab069ce59bdf7679789eb4e6dedd704,2013-07-30 11:42:00+07:00,Alexander Mezin,"diff --git a/touchpadconfig.cpp b/touchpadconfig.cpp
+index 5c71bc971..384e99742 100644
+--- a/touchpadconfig.cpp
++++ b/touchpadconfig.cpp
+@@ -282,7 +282,7 @@ TouchpadConfig::TouchpadConfig(QWidget *parent, const QVariantList &args)
+     m_pointerMotion.kcfg_AccelFactor->setInterpolator(&interpolator);
+ 
+     new SliderPair(m_pointerMotion.kcfg_MinSpeed,
+-                   m_pointerMotion.kcfg_MaxSpeed);
++                   m_pointerMotion.kcfg_MaxSpeed, this);
+     new SliderPair(m_sensitivity.kcfg_FingerLow,
+                    m_sensitivity.kcfg_FingerHigh, this);
+ "
+"Fix memory leak
+",68fd3a244df0af08710cbda352cb374ccfe039c0,d37ed088ec97e2979fb2b0d59eaca01d367f6865,2014-02-19 22:23:28+07:00,Alexander Mezin,"diff --git a/src/backends/x11/xlibnotifications.cpp b/src/backends/x11/xlibnotifications.cpp
+index 2c56a0197..1cd953a84 100644
+--- a/src/backends/x11/xlibnotifications.cpp
++++ b/src/backends/x11/xlibnotifications.cpp
+@@ -35,8 +35,8 @@ XlibNotifications::XlibNotifications(Display *display,
+ 
+     xcb_query_extension_cookie_t inputExtCookie =
+             xcb_query_extension(m_connection, std::strlen(INAME), INAME);
+-    xcb_query_extension_reply_t *inputExt =
+-            xcb_query_extension_reply(m_connection, inputExtCookie, 0);
++    QScopedPointer<xcb_query_extension_reply_t, QScopedPointerPodDeleter>
++            inputExt(xcb_query_extension_reply(m_connection, inputExtCookie, 0));
+     if (!inputExt) {
+         return;
+     }"

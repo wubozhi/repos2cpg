@@ -1,0 +1,20 @@
+message,commit_id,parent_commit,date,committer,diff
+"fix format strings
+
+git-svn-id: http://simplejson.googlecode.com/svn/trunk@110 a4795897-2c25-0410-b006-0d3caba88fa1
+",52bbdee8127eb93487f3dc7b4e294b8ffbda4ae1,6f602938e931e18e33dd7ee4600a60640154cb56,2008-09-25 06:40:34+00:00,Matthew Dempsky,"diff --git a/simplejson/_speedups.c b/simplejson/_speedups.c
+index 9e5427d..4dd18ea 100644
+--- a/simplejson/_speedups.c
++++ b/simplejson/_speedups.c
+@@ -1330,9 +1330,9 @@ scanner_call(PyObject *self, PyObject *args, PyObject *kwds)
+     PyScannerObject *s = (PyScannerObject *)self;
+     assert(PyScanner_Check(self));
+ #if PY_VERSION_HEX < 0x02050000 
+-    if (!PyArg_ParseTupleAndKeywords(args, kwds, ""On:scan_once"", kwlist, &pystr, &idx))
+-#else
+     if (!PyArg_ParseTupleAndKeywords(args, kwds, ""Oi:scan_once"", kwlist, &pystr, &idx))
++#else
++    if (!PyArg_ParseTupleAndKeywords(args, kwds, ""On:scan_once"", kwlist, &pystr, &idx))
+ #endif
+         return NULL;
+     if (PyString_Check(pystr)) {"

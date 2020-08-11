@@ -1,0 +1,79 @@
+message,commit_id,parent_commit,date,committer,diff
+"Add support for freeing a remap file datastructure, so we avoid a
+memory leak.
+",e3570e4d316512dce1c5e3359bc4c80790444907,519eb0ba91548eade4ae09fca2d89716ed8944fd,2001-08-10 18:07:46+00:00,hpa,"diff --git a/tftpd/remap.c b/tftpd/remap.c
+index 424611c..c0bd5b5 100644
+--- a/tftpd/remap.c
++++ b/tftpd/remap.c
+@@ -239,6 +239,26 @@ struct rule *parserulefile(FILE *f)
+   return first_rule;
+ }
+ 
++/* Destroy a rule file data structure */
++void freerules(struct rule *r)
++{
++  struct rule *next;
++
++  while ( r ) {
++    next = r->next;
++
++    regfree(&r->rx);
++
++    /* """" patterns aren't allocated by malloc() */
++    if ( r->pattern && *r->pattern )
++      free(r->pattern);
++  
++    free(r);
++
++    r = next;
++  }
++}
++
+ /* Execute a rule set on a string; returns a malloc'd new string. */
+ char *rewrite_string(const char *input, const struct rule *rules, int is_put)
+ {
+diff --git a/tftpd/remap.h b/tftpd/remap.h
+index f473d55..a562df5 100644
+--- a/tftpd/remap.h
++++ b/tftpd/remap.h
+@@ -30,6 +30,9 @@ struct rule;
+ /* Read a rule file */
+ struct rule *parserulefile(FILE *);
+ 
++/* Destroy a rule file data structure */
++void freerules(struct rule *);
++
+ /* Execute a rule set on a string; returns a malloc'd new string. */
+ char *rewrite_string(const char *, const struct rule *, int);
+ 
+diff --git a/tftpd/tftpd.c b/tftpd/tftpd.c
+index af7d635..5131c33 100644
+--- a/tftpd/tftpd.c
++++ b/tftpd/tftpd.c
+@@ -395,10 +395,10 @@ main(int argc, char **argv)
+       caught_sighup = 0;
+       if ( listen ) {
+ #ifdef HAVE_REGEX
+-	/* This is unfortunately a memory leak.  Hopefully
+-	   SIGHUPs aren't too common. */
+-	if ( rewrite_file )
++	if ( rewrite_file ) {
++	  freerules(rewrite_rules);
+ 	  rewrite_rules = read_remap_rules(rewrite_file);
++	}
+ #endif
+       } else {
+ 	/* Return to inetd for respawn */"
+"Fix trivial memory leak
+",eaed5dbbca2d59eeb5326c0caccdace11bdb0501,01acb3dc7fc0d373ba49157112a7898c64e6bf43,2001-11-14 20:51:57+00:00,hpa,"diff --git a/tftp/main.c b/tftp/main.c
+index c0ae285..1b45005 100644
+--- a/tftp/main.c
++++ b/tftp/main.c
+@@ -272,6 +272,7 @@ getmoreargs(const char *partial, const char *mprompt)
+   line = xmalloc(len+elen+1);
+   strcpy(line, partial);
+   strcpy(line+len, eline);
++  free(eline);
+ 
+ #ifdef HAVE_READLINE_HISTORY_H
+   add_history(line);"

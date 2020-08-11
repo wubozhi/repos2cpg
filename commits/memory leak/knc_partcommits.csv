@@ -1,0 +1,32 @@
+message,commit_id,parent_commit,date,committer,diff
+"libknc: fix quick memory leak.
+",26f41801713c7858c9e984ce6ae069fc738fd0b4,11e3f2ba36c79666a08657272a932337af0f36dc,2013-05-21 14:47:04+01:00,Roland C. Dowdeswell,"diff --git a/lib/libknc.c b/lib/libknc.c
+index 9a2eb04..ff85861 100644
+--- a/lib/libknc.c
++++ b/lib/libknc.c
+@@ -299,6 +299,7 @@ free_gssbuf(void *buf, void *cookie)
+ 	OM_uint32	min;
+ 
+ 	maj = gss_release_buffer(&min, cookie);
++	free(cookie);
+ }
+ 
+ static int"
+"lib/libknc.c: Fix memory leak.
+",99980cbfbc220533f8386552a00bfa42ab6641ab,f5c58c3fb856b086c7a4ef839a7298f91f81ecab,2014-05-13 17:45:57-04:00,Roland C. Dowdeswell,"diff --git a/lib/libknc.c b/lib/libknc.c
+index f42c173..88fad4e 100644
+--- a/lib/libknc.c
++++ b/lib/libknc.c
+@@ -411,9 +411,11 @@ knc_put_stream_mmapbuf(struct knc_stream *s, size_t len, int flags, int fd,
+ 
+ 	/* XXXrcd: better errors would be appreciated... */
+ 
+-	if (r->buf == MAP_FAILED)
++	if (r->buf == MAP_FAILED) {
+ 		/* XXXrcd: leave current errno */
++		free(r);
+ 		return -1;
++	}
+ 
+ 	return knc_put_stream_userbuf(s, (char *)r->buf + add_offset, r->len,
+ 	    free_mmapbuf, r);"

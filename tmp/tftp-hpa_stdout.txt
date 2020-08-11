@@ -1,0 +1,54 @@
+UNUSED	tmp/main.c	40;"	v	line:40	file:
+UNUSED	tmp/main.c	45;"	v	line:45	file:
+TIMEOUT	tmp/main.c	81;"	d	line:81	file:	end:81
+LBUFLEN	tmp/main.c	82;"	d	line:82	file:	end:82
+peeraddr	tmp/main.c	84;"	v	line:84
+f	tmp/main.c	85;"	v	line:85
+port	tmp/main.c	86;"	v	line:86
+trace	tmp/main.c	87;"	v	line:87
+verbose	tmp/main.c	88;"	v	line:88
+connected	tmp/main.c	89;"	v	line:89
+mode	tmp/main.c	90;"	v	line:90
+line	tmp/main.c	92;"	v	line:92
+line	tmp/main.c	94;"	v	line:94
+margc	tmp/main.c	96;"	v	line:96
+margv	tmp/main.c	97;"	v	line:97
+prompt	tmp/main.c	98;"	v	line:98
+toplevel	tmp/main.c	99;"	v	line:99
+sp	tmp/main.c	101;"	v	line:101
+HELPINDENT	tmp/main.c	124;"	d	line:124	file:	end:124
+cmd	tmp/main.c	126;"	s	line:126	file:	end:130
+name	tmp/main.c	127;"	m	line:127	struct:cmd	file:
+help	tmp/main.c	128;"	m	line:128	struct:cmd	file:
+handler	tmp/main.c	129;"	m	line:129	struct:cmd	file:
+cmdtab	tmp/main.c	132;"	v	line:132
+main	tmp/main.c	184;"	f	line:184	end:250
+hostname	tmp/main.c	252;"	v	line:252
+getmoreargs	tmp/main.c	257;"	f	line:257	file:	end:289
+setpeer	tmp/main.c	292;"	f	line:292	end:342
+modes	tmp/main.c	344;"	s	line:344	file:	end:347
+m_name	tmp/main.c	345;"	m	line:345	struct:modes	file:
+m_mode	tmp/main.c	346;"	m	line:346	struct:modes	file:
+modes	tmp/main.c	347;"	v	line:347
+modecmd	tmp/main.c	358;"	f	line:358	end:388
+setbinary	tmp/main.c	391;"	f	line:391	end:395
+setascii	tmp/main.c	398;"	f	line:398	end:402
+settftpmode	tmp/main.c	405;"	f	line:405	file:	end:410
+put	tmp/main.c	417;"	f	line:417	end:491
+putusage	tmp/main.c	494;"	f	line:494	file:	end:498
+get	tmp/main.c	504;"	f	line:504	end:574
+getusage	tmp/main.c	577;"	f	line:577	file:	end:581
+rexmtval	tmp/main.c	583;"	v	line:583
+setrexmt	tmp/main.c	586;"	f	line:586	end:605
+maxtimeout	tmp/main.c	607;"	v	line:607
+settimeout	tmp/main.c	610;"	f	line:610	end:629
+status	tmp/main.c	632;"	f	line:632	end:643
+intr	tmp/main.c	646;"	f	line:646	end:653
+tail	tmp/main.c	656;"	f	line:656	end:669
+command	tmp/main.c	675;"	f	line:675	file:	end:718
+getcmd	tmp/main.c	721;"	f	line:721	end:747
+makeargv	tmp/main.c	753;"	f	line:753	file:	end:773
+quit	tmp/main.c	776;"	f	line:776	end:780
+help	tmp/main.c	786;"	f	line:786	end:809
+settrace	tmp/main.c	812;"	f	line:812	end:818
+setverbose	tmp/main.c	821;"	f	line:821	end:827

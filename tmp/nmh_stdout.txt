@@ -1,0 +1,11 @@
+NFMTS	tmp/fmt_scan.c	29;"	d	line:29	file:	end:29
+fmt_current_folder	tmp/fmt_scan.c	34;"	v	line:34
+fmt_mnull	tmp/fmt_scan.c	38;"	v	line:38
+match	tmp/fmt_scan.c	54;"	f	line:54	file:	end:86
+PUTDF	tmp/fmt_scan.c	91;"	d	line:91	file:	end:109
+PUTSF	tmp/fmt_scan.c	111;"	f	line:111	end:140
+PUTS	tmp/fmt_scan.c	142;"	d	line:142	file:	end:155
+lmonth	tmp/fmt_scan.c	157;"	v	line:157	file:
+get_x400_friendly	tmp/fmt_scan.c	162;"	f	line:162	file:	end:189
+get_x400_comp	tmp/fmt_scan.c	192;"	f	line:192	file:	end:203
+fmt_scan	tmp/fmt_scan.c	206;"	f	line:206	end:835

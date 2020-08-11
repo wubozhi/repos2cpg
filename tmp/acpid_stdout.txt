@@ -1,0 +1,16 @@
+DIM	tmp/input_layer.c	46;"	d	line:46	file:	end:46
+evtab_entry	tmp/input_layer.c	48;"	s	line:48	file:	end:51
+event	tmp/input_layer.c	49;"	m	line:49	struct:evtab_entry	file:
+str	tmp/input_layer.c	50;"	m	line:50	struct:evtab_entry	file:
+evtab	tmp/input_layer.c	56;"	v	line:56	file:
+event_string	tmp/input_layer.c	145;"	f	line:145	file:	end:162
+need_event	tmp/input_layer.c	167;"	f	line:167	file:	end:181
+process_input	tmp/input_layer.c	185;"	f	line:185	end:273
+BITS_PER_LONG	tmp/input_layer.c	275;"	d	line:275	file:	end:275
+NBITS	tmp/input_layer.c	276;"	d	line:276	file:	end:276
+OFF	tmp/input_layer.c	277;"	d	line:277	file:	end:277
+LONG	tmp/input_layer.c	278;"	d	line:278	file:	end:278
+test_bit	tmp/input_layer.c	279;"	d	line:279	file:	end:279
+has_event	tmp/input_layer.c	285;"	f	line:285	file:	end:314
+open_inputfile	tmp/input_layer.c	318;"	f	line:318	end:361
+open_input	tmp/input_layer.c	365;"	f	line:365	end:388

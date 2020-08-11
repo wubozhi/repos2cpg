@@ -1,0 +1,14 @@
+message,commit_id,parent_commit,date,committer,diff
+"* sbr/fmt_scan.c:PUTSF() Fix an off by one formatting issue.
+",e25b4ce52c29f7458cd203cc70f73e1a6a241ede,ebff0feca0d651c3d0c535a8147963f97807c17a,2006-01-15 02:52:12+00:00,Josh Bressers,"diff --git a/sbr/fmt_scan.c b/sbr/fmt_scan.c
+index 49218546..59e1c941 100644
+--- a/sbr/fmt_scan.c
++++ b/sbr/fmt_scan.c
+@@ -133,6 +133,7 @@ char * PUTSF(char *cp, char *str, unsigned int wid, char fill) {
+         for (j = term_len ; j <= wid ; j++) {
+             *(cp + i++) = fill;
+         }
++        i--;
+     }
+ 
+     return cp + i;"

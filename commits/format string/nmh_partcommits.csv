@@ -1,0 +1,34 @@
+message,commit_id,parent_commit,date,committer,diff
+"Fixed bug in which the static maildir was overwritted if a format string
+was read from the profile.
+",745645022b8e7ff0c21cba33776bc890986b3361,e19a05bad44e548ad6f6d1865b5f797d5d70417c,2004-10-12 20:38:10+00:00,Jon Steinhart,"diff --git a/uip/inc.c b/uip/inc.c
+index af8180d1..02a2cbff 100644
+--- a/uip/inc.c
++++ b/uip/inc.c
+@@ -244,6 +244,7 @@ main (int argc, char **argv)
+     struct stat st, s1;
+     FILE *aud = NULL;
+     char	b[MAXPATHLEN + 1];
++    char	*maildir_copy;		/* copy of mail directory because the static gets overwritten */
+ 
+ #ifdef POP
+     int nmsgs, nbytes, p = 0;
+@@ -547,6 +548,9 @@ main (int argc, char **argv)
+ 	folder = getfolder (0);
+     maildir = m_maildir (folder);
+ 
++    if ((maildir_copy = strdup(maildir)) == (char *)0)
++        adios (maildir, ""error allocating memory to copy maildir"");
++
+     if (stat (maildir, &st) == NOTOK) {
+ 	if (errno != ENOENT)
+ 	    adios (maildir, ""error on folder"");
+@@ -828,7 +832,7 @@ go_to_it:
+ 		 *  Run the external program hook on the message.
+ 		 */
+ 
+-		(void)snprintf(b, sizeof (b), ""%s/%d"", maildir, msgnum + 1);
++		(void)snprintf(b, sizeof (b), ""%s/%d"", maildir_copy, msgnum + 1);
+ 		(void)ext_hook(""add-hook"", b, (char *)0);
+ 
+ 		if (aud)"

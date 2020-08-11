@@ -1,0 +1,210 @@
+__USE_GNU	tmp/libknc.c	37;"	d	line:37	file:	end:37
+knc_stream_bit	tmp/libknc.c	60;"	s	line:60	file:	end:71
+type	tmp/libknc.c	61;"	m	line:61	struct:knc_stream_bit	file:
+STREAM_BUFFER	tmp/libknc.c	62;"	d	line:62	file:	end:62
+STREAM_COMMAND	tmp/libknc.c	63;"	d	line:63	file:	end:63
+buf	tmp/libknc.c	65;"	m	line:65	struct:knc_stream_bit	file:
+free	tmp/libknc.c	66;"	m	line:66	struct:knc_stream_bit	file:
+cookie	tmp/libknc.c	67;"	m	line:67	struct:knc_stream_bit	file:
+next	tmp/libknc.c	68;"	m	line:68	struct:knc_stream_bit	file:
+len	tmp/libknc.c	69;"	m	line:69	struct:knc_stream_bit	file:
+allocated	tmp/libknc.c	70;"	m	line:70	struct:knc_stream_bit	file:
+knc_stream_gc	tmp/libknc.c	73;"	s	line:73	file:	end:76
+ptr	tmp/libknc.c	74;"	m	line:74	struct:knc_stream_gc	file:
+next	tmp/libknc.c	75;"	m	line:75	struct:knc_stream_gc	file:
+knc_stream	tmp/libknc.c	78;"	s	line:78	file:	end:85
+head	tmp/libknc.c	79;"	m	line:79	struct:knc_stream	file:
+cur	tmp/libknc.c	80;"	m	line:80	struct:knc_stream	file:
+tail	tmp/libknc.c	81;"	m	line:81	struct:knc_stream	file:
+garbage	tmp/libknc.c	82;"	m	line:82	struct:knc_stream	file:
+bufpos	tmp/libknc.c	83;"	m	line:83	struct:knc_stream	file:
+avail	tmp/libknc.c	84;"	m	line:84	struct:knc_stream	file:
+internal_knc_ctx	tmp/libknc.c	87;"	s	line:87	file:	end:156
+gssctx	tmp/libknc.c	89;"	m	line:89	struct:internal_knc_ctx	file:
+cred	tmp/libknc.c	90;"	m	line:90	struct:internal_knc_ctx	file:
+cb	tmp/libknc.c	91;"	m	line:91	struct:internal_knc_ctx	file:
+req_mech	tmp/libknc.c	92;"	m	line:92	struct:internal_knc_ctx	file:
+ret_mech	tmp/libknc.c	93;"	m	line:93	struct:internal_knc_ctx	file:
+client	tmp/libknc.c	94;"	m	line:94	struct:internal_knc_ctx	file:
+service	tmp/libknc.c	95;"	m	line:95	struct:internal_knc_ctx	file:
+imp_service	tmp/libknc.c	96;"	m	line:96	struct:internal_knc_ctx	file:
+inq_service	tmp/libknc.c	97;"	m	line:97	struct:internal_knc_ctx	file:
+req_flags	tmp/libknc.c	98;"	m	line:98	struct:internal_knc_ctx	file:
+ret_flags	tmp/libknc.c	99;"	m	line:99	struct:internal_knc_ctx	file:
+time_req	tmp/libknc.c	100;"	m	line:100	struct:internal_knc_ctx	file:
+time_rec	tmp/libknc.c	101;"	m	line:101	struct:internal_knc_ctx	file:
+deleg_cred	tmp/libknc.c	102;"	m	line:102	struct:internal_knc_ctx	file:
+opts	tmp/libknc.c	105;"	m	line:105	struct:internal_knc_ctx	file:
+locally_initiated	tmp/libknc.c	107;"	m	line:107	struct:internal_knc_ctx	file:
+open	tmp/libknc.c	108;"	m	line:108	struct:internal_knc_ctx	file:
+OPEN_READ	tmp/libknc.c	109;"	d	line:109	file:	end:109
+OPEN_WRITE	tmp/libknc.c	110;"	d	line:110	file:	end:110
+state	tmp/libknc.c	111;"	m	line:111	struct:internal_knc_ctx	file:
+STATE_UNKNOWN	tmp/libknc.c	112;"	d	line:112	file:	end:112
+STATE_ACCEPT	tmp/libknc.c	113;"	d	line:113	file:	end:113
+STATE_INIT	tmp/libknc.c	114;"	d	line:114	file:	end:114
+STATE_SESSION	tmp/libknc.c	115;"	d	line:115	file:	end:115
+STATE_COMMAND	tmp/libknc.c	116;"	d	line:116	file:	end:116
+error	tmp/libknc.c	117;"	m	line:117	struct:internal_knc_ctx	file:
+debug	tmp/libknc.c	118;"	m	line:118	struct:internal_knc_ctx	file:
+KNC_ERROR_GSS	tmp/libknc.c	119;"	d	line:119	file:	end:119
+KNC_ERROR_PROTO	tmp/libknc.c	120;"	d	line:120	file:	end:120
+KNC_ERROR_RST	tmp/libknc.c	121;"	d	line:121	file:	end:121
+KNC_ERROR_PIPE	tmp/libknc.c	122;"	d	line:122	file:	end:122
+KNC_ERROR_NOCTX	tmp/libknc.c	123;"	d	line:123	file:	end:123
+KNC_ERROR_ENOMEM	tmp/libknc.c	124;"	d	line:124	file:	end:124
+KNC_ERROR_GENERIC	tmp/libknc.c	125;"	d	line:125	file:	end:125
+errstr	tmp/libknc.c	126;"	m	line:126	struct:internal_knc_ctx	file:
+recvinbufsiz	tmp/libknc.c	128;"	m	line:128	struct:internal_knc_ctx	file:
+sendinbufsiz	tmp/libknc.c	129;"	m	line:129	struct:internal_knc_ctx	file:
+sendmax	tmp/libknc.c	131;"	m	line:131	struct:internal_knc_ctx	file:
+gssmaxpacket	tmp/libknc.c	132;"	m	line:132	struct:internal_knc_ctx	file:
+raw_recv	tmp/libknc.c	134;"	m	line:134	struct:internal_knc_ctx	file:
+cooked_recv	tmp/libknc.c	135;"	m	line:135	struct:internal_knc_ctx	file:
+raw_send	tmp/libknc.c	136;"	m	line:136	struct:internal_knc_ctx	file:
+cooked_send	tmp/libknc.c	137;"	m	line:137	struct:internal_knc_ctx	file:
+net_uses_fd	tmp/libknc.c	145;"	m	line:145	struct:internal_knc_ctx	file:
+netcookie	tmp/libknc.c	146;"	m	line:146	struct:internal_knc_ctx	file:
+netread	tmp/libknc.c	147;"	m	line:147	struct:internal_knc_ctx	file:
+netwritev	tmp/libknc.c	148;"	m	line:148	struct:internal_knc_ctx	file:
+netclose	tmp/libknc.c	149;"	m	line:149	struct:internal_knc_ctx	file:
+local_uses_fd	tmp/libknc.c	151;"	m	line:151	struct:internal_knc_ctx	file:
+localcookie	tmp/libknc.c	152;"	m	line:152	struct:internal_knc_ctx	file:
+localread	tmp/libknc.c	153;"	m	line:153	struct:internal_knc_ctx	file:
+localwritev	tmp/libknc.c	154;"	m	line:154	struct:internal_knc_ctx	file:
+localclose	tmp/libknc.c	155;"	m	line:155	struct:internal_knc_ctx	file:
+fd_cookie	tmp/libknc.c	158;"	s	line:158	file:	end:162
+mine	tmp/libknc.c	159;"	m	line:159	struct:fd_cookie	file:
+rfd	tmp/libknc.c	160;"	m	line:160	struct:fd_cookie	file:
+wfd	tmp/libknc.c	161;"	m	line:161	struct:fd_cookie	file:
+MAX_IOVCNT	tmp/libknc.c	166;"	d	line:166	file:	end:166
+KNC_GSS_ERROR	tmp/libknc.c	168;"	d	line:168	file:	end:173
+MIN	tmp/libknc.c	175;"	d	line:175	file:	end:175
+debug	tmp/libknc.c	179;"	v	line:179
+DEBUG	tmp/libknc.c	180;"	d	line:180	file:	end:184
+DEBUG	tmp/libknc.c	186;"	d	line:186	file:	end:186
+KNCDEBUG	tmp/libknc.c	189;"	d	line:189	file:	end:193
+debug_printf	tmp/libknc.c	234;"	f	line:234	end:242
+knc_destroy_stream	tmp/libknc.c	245;"	f	line:245	file:	end:253
+knc_append_stream_bit	tmp/libknc.c	256;"	f	line:256	file:	end:276
+STREAM_BIT_ALLOC_UNIT	tmp/libknc.c	278;"	d	line:278	file:	end:278
+knc_alloc_stream_bit	tmp/libknc.c	281;"	f	line:281	file:	end:306
+knc_put_stream	tmp/libknc.c	309;"	f	line:309	file:	end:330
+knc_put_stream_userbuf	tmp/libknc.c	333;"	f	line:333	file:	end:351
+free_gssbuf	tmp/libknc.c	355;"	f	line:355	file:	end:361
+knc_put_stream_gssbuf	tmp/libknc.c	364;"	f	line:364	file:	end:378
+mmapregion	tmp/libknc.c	380;"	s	line:380	file:	end:383
+buf	tmp/libknc.c	381;"	m	line:381	struct:mmapregion	file:
+len	tmp/libknc.c	382;"	m	line:382	struct:mmapregion	file:
+free_mmapbuf	tmp/libknc.c	387;"	f	line:387	file:	end:393
+knc_put_stream_mmapbuf	tmp/libknc.c	402;"	f	line:402	file:	end:428
+knc_put_stream_command	tmp/libknc.c	431;"	f	line:431	file:	end:455
+knc_get_stream_bit_type	tmp/libknc.c	458;"	f	line:458	file:	end:465
+knc_get_stream_command	tmp/libknc.c	468;"	f	line:468	file:	end:483
+knc_get_istream	tmp/libknc.c	486;"	f	line:486	file:	end:513
+knc_get_ostream	tmp/libknc.c	523;"	f	line:523	file:	end:546
+knc_get_ostreamv	tmp/libknc.c	549;"	f	line:549	file:	end:604
+knc_get_ostream_contig	tmp/libknc.c	614;"	f	line:614	file:	end:663
+knc_stream_drain	tmp/libknc.c	666;"	f	line:666	file:	end:695
+knc_stream_fill	tmp/libknc.c	698;"	f	line:698	file:	end:715
+knc_stream_avail	tmp/libknc.c	718;"	f	line:718	file:	end:722
+knc_stream_put_trash	tmp/libknc.c	725;"	f	line:725	file:	end:746
+knc_stream_garbage_collect	tmp/libknc.c	755;"	f	line:755	file:	end:789
+read_packet	tmp/libknc.c	792;"	f	line:792	file:	end:825
+put_packet	tmp/libknc.c	828;"	f	line:828	file:	end:838
+wrap_and_put_packet	tmp/libknc.c	841;"	f	line:841	file:	end:857
+knc_ctx_init	tmp/libknc.c	860;"	f	line:860	end:889
+knc_set_debug	tmp/libknc.c	892;"	f	line:892	end:896
+knc_ctx_destroy	tmp/libknc.c	899;"	f	line:899	end:938
+knc_ctx_close	tmp/libknc.c	948;"	f	line:948	end:952
+knc_error	tmp/libknc.c	955;"	f	line:955	end:962
+knc_errstr	tmp/libknc.c	965;"	f	line:965	end:986
+knc_get_opt	tmp/libknc.c	989;"	f	line:989	end:1008
+knc_set_opt	tmp/libknc.c	1011;"	f	line:1011	end:1061
+knc_is_authenticated	tmp/libknc.c	1064;"	f	line:1064	end:1071
+knc_set_cred	tmp/libknc.c	1074;"	f	line:1074	end:1081
+knc_set_service	tmp/libknc.c	1084;"	f	line:1084	end:1091
+knc_import_set_service	tmp/libknc.c	1094;"	f	line:1094	end:1121
+knc_import_set_hb_service	tmp/libknc.c	1124;"	f	line:1124	end:1150
+knc_set_cb	tmp/libknc.c	1153;"	f	line:1153	end:1162
+knc_set_req_mech	tmp/libknc.c	1165;"	f	line:1165	end:1172
+knc_get_ret_mech	tmp/libknc.c	1175;"	f	line:1175	end:1182
+knc_set_req_flags	tmp/libknc.c	1185;"	f	line:1185	end:1195
+knc_get_ret_flags	tmp/libknc.c	1198;"	f	line:1198	end:1205
+knc_set_time_req	tmp/libknc.c	1208;"	f	line:1208	end:1218
+knc_get_time_rec	tmp/libknc.c	1221;"	f	line:1221	end:1228
+knc_get_client	tmp/libknc.c	1231;"	f	line:1231	end:1250
+knc_get_service	tmp/libknc.c	1253;"	f	line:1253	end:1269
+knc_get_deleg_cred	tmp/libknc.c	1272;"	f	line:1272	end:1279
+knc_free_deleg_cred	tmp/libknc.c	1282;"	f	line:1282	end:1291
+knc_accept	tmp/libknc.c	1296;"	f	line:1296	end:1306
+knc_state_init	tmp/libknc.c	1309;"	f	line:1309	file:	end:1338
+knc_state_accept	tmp/libknc.c	1341;"	f	line:1341	file:	end:1373
+knc_state_session	tmp/libknc.c	1376;"	f	line:1376	file:	end:1416
+knc_state_command	tmp/libknc.c	1419;"	f	line:1419	file:	end:1488
+knc_state_process_in	tmp/libknc.c	1491;"	f	line:1491	file:	end:1542
+knc_state_process_out	tmp/libknc.c	1545;"	f	line:1545	file:	end:1602
+KNC_SIDE_IN	tmp/libknc.c	1604;"	d	line:1604	file:	end:1604
+KNC_SIDE_OUT	tmp/libknc.c	1605;"	d	line:1605	file:	end:1605
+knc_find_buf	tmp/libknc.c	1608;"	f	line:1608	file:	end:1632
+knc_put_buf	tmp/libknc.c	1635;"	f	line:1635	end:1642
+knc_put_ubuf	tmp/libknc.c	1645;"	f	line:1645	end:1656
+knc_put_mmapbuf	tmp/libknc.c	1659;"	f	line:1659	end:1670
+knc_get_ibuf	tmp/libknc.c	1673;"	f	line:1673	end:1680
+knc_get_obuf	tmp/libknc.c	1683;"	f	line:1683	end:1690
+knc_get_obufv	tmp/libknc.c	1693;"	f	line:1693	end:1701
+knc_get_obufc	tmp/libknc.c	1704;"	f	line:1704	end:1712
+knc_put_eof	tmp/libknc.c	1715;"	f	line:1715	end:1728
+knc_drain_buf	tmp/libknc.c	1731;"	f	line:1731	end:1738
+knc_fill_buf	tmp/libknc.c	1741;"	f	line:1741	end:1748
+knc_avail	tmp/libknc.c	1751;"	f	line:1751	end:1758
+knc_pending	tmp/libknc.c	1761;"	f	line:1761	end:1775
+knc_initiate	tmp/libknc.c	1778;"	f	line:1778	end:1799
+I_SOCK_NONBLOCK	tmp/libknc.c	1802;"	d	line:1802	file:	end:1802
+I_SOCK_NONBLOCK	tmp/libknc.c	1804;"	d	line:1804	file:	end:1804
+I_SOCK_CLOEXEC	tmp/libknc.c	1808;"	d	line:1808	file:	end:1808
+I_SOCK_CLOEXEC	tmp/libknc.c	1810;"	d	line:1810	file:	end:1810
+I_SOCK_NOSIGPIPE	tmp/libknc.c	1814;"	d	line:1814	file:	end:1814
+I_SOCK_NOSIGPIPE	tmp/libknc.c	1816;"	d	line:1816	file:	end:1816
+socket_options	tmp/libknc.c	1820;"	f	line:1820	file:	end:1838
+get_socket	tmp/libknc.c	1841;"	f	line:1841	file:	end:1859
+connect_host	tmp/libknc.c	1862;"	f	line:1862	file:	end:1899
+knc_garbage_collect	tmp/libknc.c	1904;"	f	line:1904	end:1914
+fdread	tmp/libknc.c	1917;"	f	line:1917	file:	end:1922
+fdwritev	tmp/libknc.c	1925;"	f	line:1925	file:	end:1930
+fdclose	tmp/libknc.c	1933;"	f	line:1933	file:	end:1946
+knc_set_net_fds	tmp/libknc.c	1949;"	f	line:1949	end:1974
+knc_give_net_fds	tmp/libknc.c	1977;"	f	line:1977	end:1982
+knc_set_net_fd	tmp/libknc.c	1985;"	f	line:1985	end:1989
+knc_give_net_fd	tmp/libknc.c	1992;"	f	line:1992	end:1996
+knc_get_net_rfd	tmp/libknc.c	1999;"	f	line:1999	end:2006
+knc_get_net_wfd	tmp/libknc.c	2009;"	f	line:2009	end:2016
+knc_set_local_fds	tmp/libknc.c	2019;"	f	line:2019	end:2044
+knc_give_local_fds	tmp/libknc.c	2047;"	f	line:2047	end:2052
+knc_set_local_fd	tmp/libknc.c	2055;"	f	line:2055	end:2059
+knc_give_local_fd	tmp/libknc.c	2062;"	f	line:2062	end:2066
+knc_get_local_rfd	tmp/libknc.c	2069;"	f	line:2069	end:2076
+knc_get_local_wfd	tmp/libknc.c	2079;"	f	line:2079	end:2086
+knc_need_input	tmp/libknc.c	2089;"	f	line:2089	end:2105
+knc_can_output	tmp/libknc.c	2108;"	f	line:2108	end:2115
+_fill_recv	tmp/libknc.c	2117;"	f	line:2117	file:	end:2117
+_fill_send	tmp/libknc.c	2118;"	f	line:2118	file:	end:2118
+_flush_send	tmp/libknc.c	2119;"	f	line:2119	file:	end:2119
+_flush_recv	tmp/libknc.c	2120;"	f	line:2120	file:	end:2120
+knc_get_pollfds	tmp/libknc.c	2125;"	f	line:2125	end:2171
+knc_service_pollfds	tmp/libknc.c	2174;"	f	line:2174	end:2189
+run_loop	tmp/libknc.c	2192;"	f	line:2192	end:2208
+knc_connect	tmp/libknc.c	2216;"	f	line:2216	end:2275
+errno_switch	tmp/libknc.c	2278;"	f	line:2278	file:	end:2295
+knc_fill	tmp/libknc.c	2298;"	f	line:2298	end:2367
+knc_flush	tmp/libknc.c	2370;"	f	line:2370	end:2419
+knc_shutdown	tmp/libknc.c	2422;"	f	line:2422	end:2464
+knc_close	tmp/libknc.c	2467;"	f	line:2467	end:2479
+knc_eof	tmp/libknc.c	2482;"	f	line:2482	end:2488
+knc_io_complete	tmp/libknc.c	2491;"	f	line:2491	end:2507
+knc_errstring	tmp/libknc.c	2512;"	f	line:2512	file:	end:2582
+GENERIC_BUFSIZ	tmp/libknc.c	2584;"	d	line:2584	file:	end:2584
+knc_generic_error	tmp/libknc.c	2587;"	f	line:2587	end:2600
+knc_syscall_error	tmp/libknc.c	2603;"	f	line:2603	end:2618
+knc_gss_error	tmp/libknc.c	2621;"	f	line:2621	end:2630
+knc_enomem	tmp/libknc.c	2633;"	f	line:2633	end:2637

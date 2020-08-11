@@ -1,0 +1,230 @@
+message,commit_id,parent_commit,date,committer,diff
+"Fix another potential divide by zero situation
+
+",45d921f07e88dd081bf14fcf6486495eb9309db1,173b4a4915a4b38fe1a3e1d78162f622a3e323ef,2002-04-08 09:18:27+00:00,adnans,"diff --git a/alsaplayer/interface/text/text.cpp b/alsaplayer/interface/text/text.cpp
+index d31de2b..5ed85d2 100644
+--- a/alsaplayer/interface/text/text.cpp
++++ b/alsaplayer/interface/text/text.cpp
+@@ -1,6 +1,6 @@
+ /*
+  *  text.cpp - Command Line Interface 
+- *  Copyright (C) 2001 Andy Lo A Foe <andy@alsaplayer.org>
++ *  Copyright (C) 2001-2002 Andy Lo A Foe <andy@alsaplayer.org>
+  *
+  *  This program is free software; you can redistribute it and/or modify
+  *  it under the terms of the GNU General Public License as published by
+@@ -15,7 +15,7 @@
+  *  You should have received a copy of the GNU General Public License
+  *  along with this program; if not, write to the Free Software
+  *  Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
+-*/ 
++ */ 
+ 
+ #include <stdio.h>
+ #include <stdlib.h>
+@@ -79,53 +79,58 @@ int interface_text_start(Playlist *playlist, int argc, char **argv)
+ 
+ 	memset(&info, 0, sizeof(stream_info));
+ 	memset(&old_info, 0, sizeof(stream_info));
+-	
++
+ 	playlist->UnPause();
+-	
++
+ 	sleep(2);
+ 
+ 	// Fall through console player
+ 	while((coreplayer = playlist->GetCorePlayer()) &&
+-				(coreplayer->IsActive() || coreplayer->IsPlaying() ||
+-				 playlist->GetCurrent() != playlist->Length())) {
+-			unsigned long secs, t_min, t_sec, c_min, c_sec;
+-			t_min = t_sec = c_min = c_sec = 0;
+-			while (coreplayer->IsActive() || coreplayer->IsPlaying()) {
+-					int cur_val, block_val, i;
+-					coreplayer->GetStreamInfo(&info);
+-					if (strcmp(info.title, old_info.title) != 0) {
+-							if (strlen(info.author))
+-								fprintf(stdout, ""\nPlaying: %s - %s\n"", info.author, info.title);
+-							else	
+-								fprintf(stdout, ""\nPlaying: %s\n"", info.title);
+-							memcpy(&old_info, &info, sizeof(stream_info));
+-					}
+-					if (coreplayer->GetFrames() == 0 || coreplayer->GetCurrentTime() == 0) {
+-						dosleep(100000);
+-						continue;
+-					}	
+-					block_val = secs = coreplayer->GetCurrentTime(coreplayer->GetFrames());
+-					t_min = secs / 6000;
+-					t_sec = (secs % 6000) / 100;
+-					cur_val = secs = coreplayer->GetCurrentTime();
+-					c_min = secs / 6000;
+-					c_sec = (secs % 6000) / 100;	
+-					fprintf(stdout, ""\r   Time: %02ld:%02ld (%02ld:%02ld) "",
+-									c_min, c_sec, t_min, t_sec);
+-					// Draw nice indicator
+-					block_val /= NR_BLOCKS; 
+-					cur_val /= block_val;
+-					//printf(""%d - %d\n"", block_val, cur_val);
+-					fprintf(stdout, ""["");
+-					for (i = 0; i < NR_BLOCKS; i++) {
+-							fprintf(stdout, ""%c"", cur_val >= i ? '*':' ');
+-					}
+-					fprintf(stdout,""]   "");
+-					fflush(stdout);
+-					dosleep(100000);
++			(coreplayer->IsActive() || coreplayer->IsPlaying() ||
++			 playlist->GetCurrent() != playlist->Length())) {
++		unsigned long secs, t_min, t_sec, c_min, c_sec;
++		t_min = t_sec = c_min = c_sec = 0;
++		while (coreplayer->IsActive() || coreplayer->IsPlaying()) {
++			int cur_val, block_val, i;
++			coreplayer->GetStreamInfo(&info);
++			if (strcmp(info.title, old_info.title) != 0) {
++				if (strlen(info.author))
++					fprintf(stdout, ""\nPlaying: %s - %s\n"", info.author, info.title);
++				else	
++					fprintf(stdout, ""\nPlaying: %s\n"", info.title);
++				memcpy(&old_info, &info, sizeof(stream_info));
++			}
++			block_val = secs = coreplayer->GetCurrentTime(coreplayer->GetFrames());
++
++			if (secs == 0) {
++				dosleep(100000);
++				continue;
++			}	
++			t_min = secs / 6000;
++			t_sec = (secs % 6000) / 100;
++			cur_val = secs = coreplayer->GetCurrentTime();
++			if (secs == 0) {
++				dosleep(100000);
++				continue;
++			}	
++			c_min = secs / 6000;
++			c_sec = (secs % 6000) / 100;	
++			fprintf(stdout, ""\r   Time: %02ld:%02ld (%02ld:%02ld) "",
++					c_min, c_sec, t_min, t_sec);
++			// Draw nice indicator
++			block_val /= NR_BLOCKS; 
++			cur_val /= block_val;
++			//printf(""%d - %d\n"", block_val, cur_val);
++			fprintf(stdout, ""["");
++			for (i = 0; i < NR_BLOCKS; i++) {
++				fprintf(stdout, ""%c"", cur_val >= i ? '*':' ');
+ 			}
+-			dosleep(1000000);
+-			fprintf(stdout, ""\n\n"");
++			fprintf(stdout,""]   "");
++			fflush(stdout);
++			dosleep(100000);
++		}
++		dosleep(1000000);
++		fprintf(stdout, ""\n\n"");
+ 	}		
+ 	fprintf(stdout, ""...done playing\n"");
+ 	return 0;
+@@ -147,9 +152,9 @@ interface_plugin default_plugin =
+ 
+ extern ""C"" {
+ 
+-interface_plugin *interface_plugin_info()
+-{
+-	return &default_plugin;
+-}
++	interface_plugin *interface_plugin_info()
++	{
++		return &default_plugin;
++	}
+ 
+ }"
+"Prevent divide by zero for very small files
+
+",20ca31e165ed765e863af4e3ce7cab8d10b4a15e,2684c47573d87892b4ebeb41e8d095dc50ce4190,2002-10-27 07:25:59+00:00,adnans,"diff --git a/alsaplayer/interface/text/text.cpp b/alsaplayer/interface/text/text.cpp
+index e0900b5..f2121bb 100644
+--- a/alsaplayer/interface/text/text.cpp
++++ b/alsaplayer/interface/text/text.cpp
+@@ -174,7 +174,11 @@ int interface_text_start(Playlist *playlist, int argc, char **argv)
+ 					c_min, c_sec, t_min, t_sec);
+ 			// Draw nice indicator
+ 			block_val /= NR_BLOCKS; 
+-			cur_val /= block_val;
++
++			if (!block_val)
++				cur_val = 0;
++			else
++				cur_val /= block_val;
+ 			//printf(""%d - %d\n"", block_val, cur_val);
+ 			fprintf(stdout, ""["");
+ 			for (i = 0; i < NR_BLOCKS; i++) {"
+"Fix potential divide by zero condition.
+
+",46c8345e39f1e1e9964530059631b35ee24fe617,773e75dd6bf548381ac0b38db88fef81206f7a04,2003-01-29 13:44:20+00:00,adnans,"diff --git a/alsaplayer/app/ControlSocket.cpp b/alsaplayer/app/ControlSocket.cpp
+index 046da54..64f8b09 100644
+--- a/alsaplayer/app/ControlSocket.cpp
++++ b/alsaplayer/app/ControlSocket.cpp
+@@ -62,6 +62,7 @@ static void socket_looper(void *arg)
+ 	int32_t *int_val;
+ 	socklen_t len;
+ 	int fd;
++	int fsize = 0;
+ 	int session_id = 0;
+ 	int session_ok = 0;
+ 	ap_message_t *msg;
+@@ -326,6 +327,12 @@ static void socket_looper(void *arg)
+ 					ap_message_add_int32(reply, ""ack"", 1);
+ 				}
+ 				break;
++			case AP_GET_TRACKS:
++				if (player) {
++					ap_message_add_int32(reply, ""int"", player->GetTracks());
++					ap_message_add_int32(reply, ""ack"", 1);
++				}
++				break;
+ 			case AP_GET_GENRE:
+ 				if (player) {
+ 					player->GetStreamInfo(&info);
+@@ -380,14 +387,17 @@ static void socket_looper(void *arg)
+ 			case AP_SET_POS_SECOND_RELATIVE:
+ 				if (player) {
+ 					if ((int_val = ap_message_find_int32(msg, ""int""))) {
+-						*int_val += ( player->GetCurrentTime() / 100);
+-						*int_val *= player->GetSampleRate();
+-						*int_val /= player->GetFrameSize();
+-						*int_val *= player->GetChannels();
+-						*int_val *= 2; // 16-bit (""2"" x 8-bit)a
+-						if (*int_val < 0)
+-							*int_val = 0;
+-						player->Seek(*int_val);
++						fsize = player->GetFrameSize();
++						if (fsize) {
++							*int_val += ( player->GetCurrentTime() / 100);
++							*int_val *= player->GetSampleRate();
++							*int_val /= fsize;
++							*int_val *= player->GetChannels();
++							*int_val *= 2; // 16-bit (""2"" x 8-bit)a
++							if (*int_val < 0)
++								*int_val = 0;
++							player->Seek(*int_val);
++						}	
+ 					}
+ 				}
+ 				ap_message_add_int32(reply, ""ack"", 1);
+@@ -395,11 +405,14 @@ static void socket_looper(void *arg)
+ 			case AP_SET_POS_SECOND:
+ 				if (player) {
+ 					if ((int_val = ap_message_find_int32(msg, ""int""))) {
+-						*int_val *= player->GetSampleRate();
+-						*int_val /= player->GetFrameSize();
+-						*int_val *= player->GetChannels();
+-						*int_val *= 2; // 16-bit (""2"" x 8-bit)
+-						player->Seek(*int_val);
++						fsize = player->GetFrameSize();
++						if (fsize) {
++							*int_val *= player->GetSampleRate();
++							*int_val /= fsize;
++							*int_val *= player->GetChannels();
++							*int_val *= 2; // 16-bit (""2"" x 8-bit)
++							player->Seek(*int_val);
++						}	
+ 					}
+ 				}
+ 				ap_message_add_int32(reply, ""ack"", 1);"

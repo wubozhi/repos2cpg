@@ -1,0 +1,19 @@
+message,commit_id,parent_commit,date,committer,diff
+"Move freeaddrinfo() to inside of our loop; this prevents a memory leak
+and also prevents it from being called with a NULL pointer.
+",d6ed7408ae67cf31b31a8c42515a160f7dc6330a,7b98850d3b8b2453b473fdfb6db52f4aa3fe39b6,2009-01-16 15:48:09+00:00,Ken Hornstein,"diff --git a/sbr/client.c b/sbr/client.c
+index ae6968f7..732fb47f 100644
+--- a/sbr/client.c
++++ b/sbr/client.c
+@@ -111,9 +111,10 @@ client (char *args, char *service, char *response, int len_response, int debug)
+ 
+ 	    close(sd);
+ 	}
++
++    	freeaddrinfo(res);
+     }
+ 
+-    freeaddrinfo(res);
+     client_freelist(ap);
+     strncpy (response, ""no servers available"", len_response);
+     return NOTOK;"

@@ -1,0 +1,24 @@
+message,commit_id,parent_commit,date,committer,diff
+"test/unit.c: Fix printf(3) format strings.
+",09affd18d1661f1700427a15d1a8c58f002ddfd7,85d0498d000b0c135ffa116268e27d5049c38ff3,2014-05-14 09:19:02-04:00,Roland C. Dowdeswell,"diff --git a/test/unit.c b/test/unit.c
+index 4c31235..0dc4282 100644
+--- a/test/unit.c
++++ b/test/unit.c
+@@ -158,7 +158,7 @@ knc_loop(knc_ctx ctx, int server)
+ 		nfds_t		nfds;
+ 
+ 		fprintf(stderr, ""%s: loop start (% 6d), ""
+-		    ""R=% 9d %s S=% 9d %s ToSend=% 9d\n"", server?""S"":""C"",
++		    ""R=% 9d %s S=% 9d %s ToSend=% 9zu\n"", server?""S"":""C"",
+ 		    ++loopcount, valrecv, do_recv?""    "":""done"", valsend,
+ 		    do_send?""    "":""done"", knc_pending(ctx, KNC_DIR_SEND));
+ 
+@@ -225,7 +225,7 @@ knc_loop(knc_ctx ctx, int server)
+ 	}
+ 
+ 	fprintf(stderr, ""%s: loop done  (% 6d), ""
+-	    ""R=% 9d %s S=% 9d %s ToSend=% 9d\n"", server?""S"":""C"",
++	    ""R=% 9d %s S=% 9d %s ToSend=% 9zu\n"", server?""S"":""C"",
+ 	    ++loopcount, valrecv, do_recv?""    "":""done"", valsend,
+ 	    do_send?""    "":""done"", knc_pending(ctx, KNC_DIR_SEND));
+ "

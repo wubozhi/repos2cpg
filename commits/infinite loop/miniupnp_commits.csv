@@ -1,0 +1,42 @@
+message,commit_id,parent_commit,date,committer,diff
+"avoid infinite loop in SendResp_upnphttp() in case of error
+",0ff86e49758b5ba93e5b65f4bd38d07ce1075cc8,ba27a5b5d925f2abf544447fd6646f6a33c3814e,2011-11-18 12:15:24+01:00,Thomas Bernard,"diff --git a/miniupnpd/Changelog.txt b/miniupnpd/Changelog.txt
+index 3b12fe9..6b2108a 100644
+--- a/miniupnpd/Changelog.txt
++++ b/miniupnpd/Changelog.txt
+@@ -1,4 +1,7 @@
+-$Id: Changelog.txt,v 1.240 2011/07/30 13:14:34 nanard Exp $
++$Id: Changelog.txt,v 1.241 2011/11/18 11:10:08 nanard Exp $
++
++2011/11/18:
++  avoid infinite loop in SendResp_upnphttp() in case of error
+ 
+ 2011/07/30:
+   netfilter : Added a tiny_nf_nat.h file to compile with iptables
+diff --git a/miniupnpd/upnphttp.c b/miniupnpd/upnphttp.c
+index 03a4a85..92d50f0 100644
+--- a/miniupnpd/upnphttp.c
++++ b/miniupnpd/upnphttp.c
+@@ -1,4 +1,4 @@
+-/* $Id: upnphttp.c,v 1.62 2011/08/26 12:46:14 nanard Exp $ */
++/* $Id: upnphttp.c,v 1.63 2011/11/18 11:10:09 nanard Exp $ */
+ /* Project :  miniupnp
+  * Website :  http://miniupnp.free.fr/ or http://miniupnp.tuxfamily.org/
+  * Author :   Thomas Bernard
+@@ -16,6 +16,7 @@
+ #include <arpa/inet.h>
+ #include <syslog.h>
+ #include <ctype.h>
++#include <errno.h>
+ #include ""config.h""
+ #include ""upnphttp.h""
+ #include ""upnpdescgen.h""
+@@ -730,6 +731,8 @@ SendResp_upnphttp(struct upnphttp * h)
+ 		if(n<0)
+ 		{
+ 			syslog(LOG_ERR, ""send(res_buf): %m"");
++			if (errno != EINTR)
++				break; /* avoid infinite loop */
+ 		}
+ 		else if(n == 0)
+ 		{"

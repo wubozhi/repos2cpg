@@ -1,0 +1,1 @@
+{"function_used_diffs": [["client", "+", "114", "42", "121"], ["client", "+    \tfreeaddrinfo(res);", "115", "42", "121"]], "dismatched_diffs": []}

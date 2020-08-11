@@ -1,0 +1,59 @@
+message,commit_id,parent_commit,date,committer,diff
+"Mostly comment changes.  However, one added check for a null pointer.
+",b655c79dcc8b0a15780b8ad67096d3c46aff450f,452e63d8a01e4941e919154aa18d59e235020034,2011-12-09 13:54:26-05:00,Ted Felix,"diff --git a/connection_list.h b/connection_list.h
+index 9ae888f..43c3dc0 100644
+--- a/connection_list.h
++++ b/connection_list.h
+@@ -35,6 +35,7 @@ struct connection
+ 	int fd;
+ 
+ 	/* process incoming data on the connection */
++	/* ??? suggest passing a pointer to this connection struct */
+ 	void (* process)(int fd);
+ 
+ 	/* Optional.  Used by find_connection_name() to find the connection for a 
+@@ -55,9 +56,13 @@ extern void add_connection(struct connection *p);
+ extern void delete_connection(int fd);
+ 
+ /* find a connection in the list by file descriptor */
++/* ??? This routine is unnecessary.  When we call the connection's process
++ *     routine, we should pass a pointer to the connection.  That will have
++ *     the usual fd along with everything else. */
+ extern struct connection *find_connection(int fd);
+ 
+ /* find a connection in the list by pathname */
++/* ??? unused last I checked */
+ extern struct connection *find_connection_name(char *pathname);
+ 
+ /* get the number of connections in the list */
+diff --git a/input_layer.c b/input_layer.c
+index b9c95d6..e9b40f4 100644
+--- a/input_layer.c
++++ b/input_layer.c
+@@ -233,7 +233,7 @@ void process_input(int fd)
+ 	/* if we're getting scancodes, we probably have a keyboard */
+ 	if (event.type == EV_MSC  &&  event.code == MSC_SCAN) {
+ 		if (c)
+-			c->kybd = 1;  // appears to be a keyboard device
++			c->kybd = 1;  /* appears to be a keyboard device */
+ 	}
+ 	
+ 	/* convert the event into a string */
+@@ -242,14 +242,11 @@ void process_input(int fd)
+ 	if (str == NULL)
+ 		return;
+ 
+-	/* If we suspect this is a keyboard, and we have enough space, tack on a 
+-	 * ""K"" to the end of the event string. */
+-	if (c->kybd  &&  strnlen(str, sizeof(str2)) <= sizeof(str2) - 3) {
+-		/* strcpy() str to a new buffer */
++	/* If we suspect this is a keyboard, and we have enough space, tack a 
++	 * ""K"" on to the end of the event string. */
++	if (c  &&  c->kybd  &&  strnlen(str, sizeof(str2)) <= sizeof(str2) - 3) {
+ 		strcpy(str2, str);
+-		/* strcat() on the "" K"" */
+ 		strcat(str2, "" K"");
+-		/* set str to point to the new buffer */
+ 		str = str2;
+ 	}
+ 	"

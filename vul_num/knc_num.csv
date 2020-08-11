@@ -1,0 +1,16 @@
+type,number
+injection,0
+buffer overflow,0
+out of bounds,0
+race conditions,0
+memory leak,4
+format string,2
+information leak,0
+double free,0
+use after free,0
+divide by zero,0
+off by one,0
+infinite loop,0
+integer overflow,0
+integer underflow,0
+null pointer,0

@@ -1,0 +1,20 @@
+New_upnphttp	tmp/upnphttp.c	28;"	f	line:28	end:39
+CloseSocket_upnphttp	tmp/upnphttp.c	42;"	f	line:42	end:50
+Delete_upnphttp	tmp/upnphttp.c	53;"	f	line:53	end:65
+ParseHttpHeaders	tmp/upnphttp.c	69;"	f	line:69	file:	end:155
+Send404	tmp/upnphttp.c	159;"	f	line:159	file:	end:184
+Send501	tmp/upnphttp.c	188;"	f	line:188	file:	end:214
+findendheaders	tmp/upnphttp.c	217;"	f	line:217	file:	end:226
+sendDummyDesc	tmp/upnphttp.c	230;"	f	line:230	file:	end:244
+sendXMLdesc	tmp/upnphttp.c	249;"	f	line:249	file:	end:270
+ProcessHTTPPOST_upnphttp	tmp/upnphttp.c	275;"	f	line:275	file:	end:305
+checkCallbackURL	tmp/upnphttp.c	313;"	f	line:313	file:	end:370
+ProcessHTTPSubscribe_upnphttp	tmp/upnphttp.c	373;"	f	line:373	file:	end:427
+ProcessHTTPUnSubscribe_upnphttp	tmp/upnphttp.c	430;"	f	line:430	file:	end:442
+ProcessHttpQuery_upnphttp	tmp/upnphttp.c	448;"	f	line:448	file:	end:548
+Process_upnphttp	tmp/upnphttp.c	552;"	f	line:552	end:617
+httpresphead	tmp/upnphttp.c	619;"	v	line:619	file:
+BuildHeader_upnphttp	tmp/upnphttp.c	640;"	f	line:640	end:699
+BuildResp2_upnphttp	tmp/upnphttp.c	702;"	f	line:702	end:710
+BuildResp_upnphttp	tmp/upnphttp.c	714;"	f	line:714	end:718
+SendResp_upnphttp	tmp/upnphttp.c	721;"	f	line:721	end:749
