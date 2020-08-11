@@ -82,7 +82,6 @@ class Getfunc:
 
 		process_list = []
 		for project in project_commits.keys():
-			print(project)
 			process = mp.Process(target=self.single_process,
 								 args=(project_commits[project], project, repos_path[project]))
 			process_list.append(process)
