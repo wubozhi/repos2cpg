@@ -270,6 +270,8 @@ class Getfunc:
 			if 'm' in fields or 'f' in fields:		   # add function or identifier
 				start_num = self.get_num(fields, 'line:')
 				end_num = self.get_num(fields, 'end:')
+				if end_num == None or start_num == None:
+					continue
 				func_dict['func'] = self.extract_function(file_path, start_num, end_num)
 				# print('func: %s' % func_dict['func'])
 				func_dict['start_line'] = start_num
