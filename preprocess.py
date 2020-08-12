@@ -37,7 +37,7 @@ def initial_params():
 	return params
 
 def get_commits_from_repos(params):
-	GetCommits(params).repos2commits()
+	GetCommits(params).get_commits()
 
 def generate_functions_from_commits(params):
 	Getfunc(params).generate_functions()

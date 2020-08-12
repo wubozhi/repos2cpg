@@ -96,7 +96,7 @@ class GetCommits:
 				repos[name] = path
 		return repos
 
-	def repo_csv(self,repo_path):
+	def get_commit_from_repo(self,repo_path):
 		pattern = re.compile(r'@@.*?@@')
 
 		type_part_num = dict()
@@ -153,7 +153,7 @@ class GetCommits:
 
 
 
-	def repos2commits(self):	
+	def get_commits(self):	
 		### get repos list ##############
 		repos = self.get_repos_list()
 
@@ -165,7 +165,7 @@ class GetCommits:
 			if name in repos_read:
 				continue
 			else:
-				pool.apply_async(self.repo_csv,(repo,))		
+				pool.apply_async(self.get_commit_from_repo,(repo,))		
 
 		pool.close()
 		pool.join()
