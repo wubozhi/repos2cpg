@@ -4,22 +4,9 @@ from commits2func import Getfunc
 import os
 # import func2cpg
 
-class Preprocess:
-	def __init__(self):
-		pass
-
-	def get_commits_from_repos(self,params1):
-		GetCommits(params1).repos2commits()
-
-	def generate_functions_from_commits(self,params2):
-		Getfunc(params2).generate_functions()
-
-
-
-
-if __name__ == '__main__':
-
-	vultype = [
+def initial_params():
+	params=dict()
+	params['vul_type']=[
 	'injection',
 	'buffer overflow',
 	'out of bounds',
@@ -36,25 +23,36 @@ if __name__ == '__main__':
 	'integer underflow',
 	'null pointer'
 	]
+	params['commit_path']='commits'
+	params['repos_file'] = 'c_repos_list.csv'
+	params['processes_number'] = 10
+	params['vul_num_path'] = 'vul_num'
 
-	params1=dict()
-	params1['vul_type']=vultype
-	params1['commit_path']='commits'
-	params1['repos_file'] = 'c_repos_list.csv'
-	params1['processes_number'] = 10
-	params1['vul_num_path'] = 'vul_num'
+	params['functions_extracted_commits'] = 'functions_extracted_commits'
+	params['diffs_used_commits'] = 'diffs_used_commits'
+	params['filter_diffs_num'] = 10
+	params['filter_chunks_num'] = 5
+	params['commits_path'] = '/home/lingling/wubozhi/datapreprocess/preprocess/commits/'
 
-	# Preprocess().get_commits_from_repos(params1)
+	return params
 
-	commits_path= '/home/lingling/wubozhi/datapreprocess/preprocess/commits/'
-	params2=dict()
-	params2['repos_file'] = 'c_repos_list.csv'
-	params2['functions_extracted_commits'] = 'functions_extracted_commits'
-	params2['diffs_used_commits'] = 'diffs_used_commits'
-	params2['filter_diffs_num'] = 10
-	params2['filter_chunks_num'] = 5
+def get_commits_from_repos(params):
+	GetCommits(params).repos2commits()
 
-	for i in vultype:
+def generate_functions_from_commits(params):
+	Getfunc(params).generate_functions()
+
+
+
+
+if __name__ == '__main__':
+
+	params = initial_params()
+
+	get_commits_from_repos(params)
+
+	for i in params['vul_type']:
 		print('\n \n start vulnerability: %s' % i)
-		params2['commits_path'] = os.path.join(commits_path, i)
-		Preprocess().generate_functions_from_commits(params2)
+		params['commits_path'] = os.path.join(params['commits_path'], i)
+		generate_functions_from_commits(params)
+		params['commits_path'] = params['commits_path'].split(i)[0]
