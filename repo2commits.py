@@ -173,31 +173,4 @@ class GetCommits:
 		self.count_repos_vul_number_csv(self.vul_num_path)
 
 
-if __name__ == '__main__':
-	params=dict()
-	params['vul_type']=[
-	'injection',
-	'buffer overflow',
-	'out of bounds',
-	'race conditions',
-	'memory leak',
-	'format string',
-	'information leak',
-	'double free',
-	'use after free',
-	'divide by zero',
-	'off by one',
-	'infinite loop',
-	'integer overflow',
-	'integer underflow',
-	'null pointer'
-	]
-	params['commit_path']='commits'
-	params['repos_file'] = 'c_repos_50.csv'
-	params['processes_number'] = 100
-	params['vul_num_path'] = 'vul_num'
-
-
-	get_commits_class = GetCommits(params)
-	get_commits_class.repos2commits()
-#22104
+# if __name__ == '__main__':
