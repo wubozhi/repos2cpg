@@ -74,8 +74,8 @@ class GetCommits:
 							vul_num[k]=vul_num[k]+int(v)
 						if file.split('_')[-1] == "partnum.csv":
 							part_vul_num[k]=part_vul_num[k]+int(v)
-		self.count_repo_vul_number_csv(path+os.sep+"num.csv",vul_num)
-		self.count_repo_vul_number_csv(path+os.sep+"partnum.csv",part_vul_num)
+		self.count_repo_vul_number_csv(path+os.sep+"all_vul_number.csv",vul_num)
+		self.count_repo_vul_number_csv(path+os.sep+"part_vul_number.csv",part_vul_num)
 
 
 	def get_commit_attributes(self,repo,commit):
